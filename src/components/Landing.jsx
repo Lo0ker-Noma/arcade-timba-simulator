@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuthStore } from '../store/authStore';
 import { GAMES } from '../lib/protocol';
 import DotMatrix from './DotMatrix';
+import GamesCarousel from './GamesCarousel';
 
 export default function Landing() {
   const initNostr = useAuthStore((s) => s.initNostr);
@@ -14,7 +15,7 @@ export default function Landing() {
     <div className="relative overflow-hidden">
       <div className="absolute inset-0 arcade-grid opacity-60" />
       <div className="relative max-w-6xl mx-auto px-4 pt-16 pb-12">
-        <div className="grid lg:grid-cols-2 gap-10 items-center">
+        <div className="grid lg:grid-cols-2 gap-10 items-start">
           <div>
             <span className="chip text-arcade-green mb-4">🎮 HACKATON #04 · LA CRYPTA</span>
             <h1 className="text-6xl sm:text-7xl font-black tracking-tight leading-none">
@@ -36,11 +37,14 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="panel p-6 relative">
-            <DotMatrix text="HDMP GAMING BTC · " />
-            <div className="flex items-center justify-between mt-5">
-              <span className="chip text-arcade-purple pixel text-[9px]">BOSS LEVEL</span>
-              <div className="w-10 h-10 rounded-full grid place-items-center text-arcade-amber" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)' }}>⚡</div>
+          <div className="space-y-4">
+            <GamesCarousel />
+            <div className="panel p-6 relative">
+              <DotMatrix text="HDMP GAMING BTC · " />
+              <div className="flex items-center justify-between mt-5">
+                <span className="chip text-arcade-purple pixel text-[9px]">BOSS LEVEL</span>
+                <div className="w-10 h-10 rounded-full grid place-items-center text-arcade-amber" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)' }}>⚡</div>
+              </div>
             </div>
           </div>
         </div>
