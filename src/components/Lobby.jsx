@@ -8,11 +8,19 @@ import GamePreview from './GamePreview';
 export default function Lobby() {
   const { rooms, startLobby, stopLobby, createRoom, joinRoom } = useGameStore();
   const pubkey = useAuthStore((s) => s.pubkey);
+  const detectedLn = useAuthStore((s) => s.user?.lud16) || '';
   const [showCreate, setShowCreate] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [lnAddr, setLnAddr] = useState('');
+  const [lnTouched, setLnTouched] = useState(false);
 
   useEffect(() => { startLobby(); return () => stopLobby(); }, []);
+
+  // Auto-fill the Lightning Address from the user's Nostr profile (lud16),
+  // unless they've already typed their own.
+  useEffect(() => {
+    if (detectedLn && !lnTouched && !lnAddr) setLnAddr(detectedLn);
+  }, [detectedLn, lnTouched, lnAddr]);
 
   const list = Object.values(rooms)
     .filter((r) => r.status === 'lobby')
@@ -35,12 +43,17 @@ export default function Lobby() {
       </div>
 
       <div className="panel p-4 mb-6 flex flex-col sm:flex-row gap-3 items-center">
-        <div className="text-sm text-slate-400 whitespace-nowrap">Tu Lightning Address</div>
+        <div className="text-sm text-slate-400 whitespace-nowrap">
+          Tu Lightning Address
+          {detectedLn && lnAddr === detectedLn && (
+            <span className="block text-[10px] text-arcade-green">⚡ detectada de tu perfil Nostr</span>
+          )}
+        </div>
         <input
           className="flex-1 w-full"
           placeholder="tu@walletofsatoshi.com (para cobrar el bote)"
           value={lnAddr}
-          onChange={(e) => setLnAddr(e.target.value)}
+          onChange={(e) => { setLnTouched(true); setLnAddr(e.target.value); }}
         />
         <div className="flex gap-2 w-full sm:w-auto">
           <input className="flex-1" placeholder="código de sala" value={joinCode} onChange={(e) => setJoinCode(e.target.value)} />
@@ -75,12 +88,12 @@ export default function Lobby() {
         </div>
       )}
 
-      {showCreate && <CreateModal onClose={() => setShowCreate(false)} createRoom={createRoom} defaultLn={lnAddr} />}
+      {showCreate && <CreateModal onClose={() => setShowCreate(false)} createRoom={createRoom} defaultLn={lnAddr || detectedLn} detectedLn={detectedLn} />}
     </div>
   );
 }
 
-function CreateModal({ onClose, createRoom, defaultLn }) {
+function CreateModal({ onClose, createRoom, defaultLn, detectedLn }) {
   const [name, setName] = useState('');
   const [game, setGame] = useState('connect4');
   const [pot, setPot] = useState(1000);
@@ -136,8 +149,18 @@ function CreateModal({ onClose, createRoom, defaultLn }) {
             </div>
           </div>
           <div>
-            <label className="text-xs text-slate-400">Tu Lightning Address (escrow del bote)</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-slate-400">Tu Lightning Address (escrow del bote)</label>
+              {detectedLn && ln !== detectedLn && (
+                <button type="button" className="text-[10px] text-arcade-green hover:underline" onClick={() => setLn(detectedLn)}>
+                  ⚡ usar la de mi perfil
+                </button>
+              )}
+            </div>
             <input className="w-full mt-1" value={ln} onChange={(e) => setLn(e.target.value)} placeholder="tu@walletofsatoshi.com" />
+            {detectedLn && ln === detectedLn
+              ? <div className="text-[10px] text-arcade-green mt-1">⚡ detectada de tu perfil Nostr · puedes cambiarla</div>
+              : <div className="text-[10px] text-slate-500 mt-1">Puedes escribir otra dirección manualmente.</div>}
           </div>
           <button className="btn-neon w-full" disabled={busy} onClick={submit}>
             {busy ? 'Creando…' : 'Crear y entrar'}

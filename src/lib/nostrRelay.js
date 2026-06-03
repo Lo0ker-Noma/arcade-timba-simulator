@@ -165,6 +165,7 @@ export function fetchNostrProfile(pubkey) {
       name: `${pubkey.slice(0, 8)}...`,
       picture: `https://api.dicebear.com/7.x/avataaars/svg?seed=${pubkey}`,
       nip05: null,
+      lud16: null,
     };
     if (!/^[0-9a-f]{64}$/i.test(pubkey || '')) { resolve(fallback); return; }
 
@@ -199,12 +200,16 @@ export function fetchNostrProfile(pubkey) {
         }
         clearTimeout(timer);
         try { ws.close(); } catch {}
+        // lud16 = LUD-16 Lightning Address (user@domain) declared in kind:0.
+        const rawLud16 = cleanStr(meta.lud16, 120);
+        const lud16 = rawLud16 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawLud16) ? rawLud16.toLowerCase() : null;
         safeResolve({
           pubkey,
           name: cleanStr(meta.display_name, 60) || cleanStr(meta.name, 60) || fallback.name,
           picture: safeUrl(meta.picture) || fallback.picture,
           nip05: cleanStr(meta.nip05, 120) || null,
           about: cleanStr(meta.about, 500) || '',
+          lud16,
         });
       };
 
