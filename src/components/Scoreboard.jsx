@@ -26,7 +26,7 @@ export default function Scoreboard({ room }) {
                 </div>
                 <div className="text-[10px] text-slate-500 flex items-center gap-1">
                   {isRey
-                    ? (p.pubkey === room.host ? <span className="text-arcade-amber">👑 admin (bote)</span> : <span className="text-slate-400">🎮 compite</span>)
+                    ? (p.pubkey === room.host ? <span className="text-arcade-amber">👑 admin · juega</span> : <span className="text-slate-400">🎮 compite</span>)
                     : (p.funded ? <span className="text-arcade-green">⚡ pagó</span> : <span className="text-slate-600">sin pagar</span>)}
                 </div>
               </div>

@@ -18,8 +18,8 @@ export default function Landing() {
           <div>
             <span className="chip text-arcade-green mb-4">🎮 HACKATON #04 · LA CRYPTA</span>
             <h1 className="text-6xl sm:text-7xl font-black tracking-tight leading-none">
-              <span className="neon-text text-white">ARCADE</span><br />
-              <span className="neon-text-purple text-arcade-purple">TIMBA</span>
+              <span className="glitch neon-text text-white" data-text="ARCADE">ARCADE</span><br />
+              <span className="glitch neon-text-purple text-arcade-purple" data-text="TIMBA">TIMBA</span>
             </h1>
             <p className="text-lg text-slate-300 mt-4 max-w-md">
               Juega con tus amigos a clásicos del arcade. Cada uno rellena el <b className="text-arcade-amber">bote</b>,
@@ -37,7 +37,6 @@ export default function Landing() {
           </div>
 
           <div className="panel p-6 relative">
-            <div className="absolute top-4 right-4 chip text-arcade-amber pixel text-[9px]">PRESS START</div>
             <DotMatrix text="HDMP GAMING BTC · " />
             <div className="flex items-center justify-between mt-5">
               <span className="chip text-arcade-purple pixel text-[9px]">BOSS LEVEL</span>

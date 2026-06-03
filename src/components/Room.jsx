@@ -103,7 +103,8 @@ export default function Room() {
           ) : (
             <div className="text-center text-slate-500">
               <div className="text-5xl mb-3 animate-flicker">{game?.emoji}</div>
-              <div>Esperando jugadores y pagos…</div>
+              <div className="pixel text-arcade-amber press-start text-lg my-3">PRESS START</div>
+              <div>{canStart ? (isHost ? 'Pulsa “Empezar partida” para arrancar.' : 'Esperando a que el host arranque…') : 'Esperando jugadores…'}</div>
               <div className="text-xs mt-2">{room.players.length} en la sala</div>
             </div>
           )}
