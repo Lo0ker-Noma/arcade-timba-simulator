@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
-import { GAMES, WIN_TARGETS } from '../lib/protocol';
+import { GAMES, WIN_TARGETS, POT_MODES } from '../lib/protocol';
 import { isValidLightningAddress } from '../lib/lightning';
 import GamePreview from './GamePreview';
 
@@ -77,9 +77,15 @@ export default function Lobby() {
                   <span className="chip text-arcade-amber">🎯 {r.winTarget}</span>
                 </div>
                 <h3 className="font-bold truncate">{r.name}</h3>
-                <div className="text-xs text-slate-500 mb-3">{g?.name} · {r.players.length} jugador(es)</div>
+                <div className="text-xs text-slate-500 mb-3">
+                  {g?.name} · {r.players.length} jugador(es) · {r.potMode === 'rey' ? '👑 Rey de la pista' : '🪙 Timba'}
+                </div>
                 <div className="flex items-center justify-between">
-                  <span className="pixel text-arcade-green text-xs">{r.potPerPlayer.toLocaleString()} sats</span>
+                  <span className="pixel text-arcade-green text-xs">
+                    {r.potMode === 'rey'
+                      ? `${(r.finalPot || 0).toLocaleString()} sats`
+                      : `${(r.potPerPlayer || 0).toLocaleString()} sats c/u`}
+                  </span>
                   <button className="btn-neon !py-2 !px-3 text-xs" onClick={() => doJoin(r.id)}>Unirme</button>
                 </div>
               </div>
@@ -96,7 +102,9 @@ export default function Lobby() {
 function CreateModal({ onClose, createRoom, defaultLn, detectedLn }) {
   const [name, setName] = useState('');
   const [game, setGame] = useState('connect4');
+  const [potMode, setPotMode] = useState('timba');
   const [pot, setPot] = useState(1000);
+  const [finalPot, setFinalPot] = useState(10000);
   const [target, setTarget] = useState(7);
   const [ln, setLn] = useState(defaultLn || '');
   const [busy, setBusy] = useState(false);
@@ -104,7 +112,13 @@ function CreateModal({ onClose, createRoom, defaultLn, detectedLn }) {
   const submit = async () => {
     if (!isValidLightningAddress(ln)) { alert('Necesitas una Lightning Address válida (será el escrow del bote).'); return; }
     setBusy(true);
-    await createRoom({ name: name || 'Timba arcade', game, potPerPlayer: Number(pot), winTarget: Number(target), hostLnAddress: ln.trim().toLowerCase() });
+    await createRoom({
+      name: name || 'Timba arcade', game, winTarget: Number(target),
+      hostLnAddress: ln.trim().toLowerCase(),
+      potMode,
+      potPerPlayer: potMode === 'timba' ? Number(pot) : 0,
+      finalPot: potMode === 'rey' ? Number(finalPot) : 0,
+    });
     setBusy(false);
     onClose();
   };
@@ -136,10 +150,31 @@ function CreateModal({ onClose, createRoom, defaultLn, detectedLn }) {
             </div>
             <GamePreview game={game} />
           </div>
+          <div>
+            <label className="text-xs text-slate-400">Modalidad del bote</label>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              {Object.values(POT_MODES).map((m) => (
+                <button key={m.id} type="button" onClick={() => setPotMode(m.id)}
+                  className={`p-2 rounded-lg text-left ${potMode === m.id ? 'bg-arcade-cyan/15 border border-arcade-cyan/40' : 'btn-ghost !p-2'}`}>
+                  <div className="text-sm font-semibold">{m.emoji} {m.name}</div>
+                  <div className="text-[10px] text-slate-400 leading-tight mt-0.5">{m.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-slate-400">Bote por jugador (sats)</label>
-              <input type="number" min={0} className="w-full mt-1" value={pot} onChange={(e) => setPot(e.target.value)} />
+              {potMode === 'timba' ? (
+                <>
+                  <label className="text-xs text-slate-400">Bote por jugador (sats)</label>
+                  <input type="number" min={0} className="w-full mt-1" value={pot} onChange={(e) => setPot(e.target.value)} />
+                </>
+              ) : (
+                <>
+                  <label className="text-xs text-slate-400">Bote final que pones tú (sats)</label>
+                  <input type="number" min={0} className="w-full mt-1" value={finalPot} onChange={(e) => setFinalPot(e.target.value)} />
+                </>
+              )}
             </div>
             <div>
               <label className="text-xs text-slate-400">Primero a… victorias</label>
@@ -147,6 +182,11 @@ function CreateModal({ onClose, createRoom, defaultLn, detectedLn }) {
                 {WIN_TARGETS.map((t) => <option key={t} value={t}>{t === 1 ? '1 (a una partida)' : t}</option>)}
               </select>
             </div>
+          </div>
+          <div className="text-[10px] text-slate-500 -mt-2">
+            {potMode === 'timba'
+              ? '🪙 Cada jugador paga su parte; el bote es la suma de todos.'
+              : '👑 Tú (admin) pones el bote final. Los jugadores compiten gratis y el ganador se lo lleva.'}
           </div>
           <div>
             <div className="flex items-center justify-between">

@@ -66,7 +66,7 @@ export const useGameStore = create((set, get) => ({
   },
 
   // ---- Create a room (host) ----
-  createRoom: async ({ name, game, potPerPlayer, winTarget, hostLnAddress }) => {
+  createRoom: async ({ name, game, potPerPlayer, winTarget, hostLnAddress, potMode = 'timba', finalPot = 0 }) => {
     const auth = useAuthStore.getState();
     if (!auth.pubkey) return null;
     const id = newRoomId();
@@ -76,7 +76,9 @@ export const useGameStore = create((set, get) => ({
       name: String(name || 'Sala arcade').slice(0, 60),
       host: auth.pubkey,
       hostLnAddress: String(hostLnAddress).trim().toLowerCase(),
-      potPerPlayer: Math.max(0, Math.floor(potPerPlayer)),
+      potMode: potMode === 'rey' ? 'rey' : 'timba',
+      potPerPlayer: Math.max(0, Math.floor(potPerPlayer || 0)),
+      finalPot: Math.max(0, Math.floor(finalPot || 0)),
       winTarget: Math.floor(winTarget),
       status: 'lobby',
       currentGame: game,
@@ -84,7 +86,8 @@ export const useGameStore = create((set, get) => ({
         pubkey: auth.pubkey,
         name: profile.name || 'Host',
         lnAddress: String(hostLnAddress).trim().toLowerCase(),
-        funded: false,
+        // In "rey" mode the host is the bankroll: counts as funded from the start.
+        funded: potMode === 'rey',
       }],
       scores: { [auth.pubkey]: 0 },
       round: 0,
@@ -174,7 +177,8 @@ export const useGameStore = create((set, get) => ({
               pubkey: fromPubkey,
               name: String(msg.name || `${fromPubkey.slice(0, 8)}…`).slice(0, 40),
               lnAddress: String(msg.lnAddress || '').trim().toLowerCase(),
-              funded: false,
+              // "rey" mode: players compete for free, so no funding required.
+              funded: r.potMode === 'rey',
             });
             r.scores[fromPubkey] = 0;
           }

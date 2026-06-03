@@ -34,8 +34,16 @@ Los juegos **por turnos** (Conecta 4, Tic Tac Toe) son multijugador remoto real:
 Versión *hackathon-friendly*, **sin backend**:
 
 - El creador de la sala pone su **Lightning Address** como escrow.
-- Cada jugador paga su parte resolviendo esa dirección (LNURL-pay / LUD-16) → factura BOLT11 → pago con **WebLN** (Alby) o escaneando el QR.
 - Al terminar, el escrow paga el bote completo a la **Lightning Address del ganador**.
+
+### Modalidades de bote
+
+| Modo | Cómo se llena | Ideal para |
+|------|---------------|-----------|
+| 🪙 **Timba** | Cada jugador aporta los **mismos sats**; el bote es la suma. | Partidas entre iguales |
+| 👑 **Rey de la pista** | Un **admin pone el bote final** completo; los demás juegan **gratis** y el ganador se lo lleva. | Retos, premios, torneos |
+
+En Timba cada jugador paga su parte (LNURL-pay / LUD-16 → BOLT11 → WebLN o QR). En Rey de la pista nadie paga por entrar: el admin es la banca y abona el bote al ganador al final.
 
 > Requiere confianza en el host (tiene la custodia temporal del bote). Una **Opción B** custodial real (wallet efímera por sala vía LNbits/Strike) puede sustituir `resolvePayout` sin tocar el resto de la app.
 

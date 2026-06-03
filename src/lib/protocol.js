@@ -30,6 +30,23 @@ export const GAMES = {
 
 export const WIN_TARGETS = [1, 3, 5, 7, 10, 12];
 
+// Pot modes:
+//  - timba: every player contributes the same sats; pot = sum of contributions.
+//  - rey:   an admin (host) puts up the whole final pot; players compete free
+//           and the winner takes the admin's pot ("Rey de la pista").
+export const POT_MODES = {
+  timba: { id: 'timba', name: 'Timba', emoji: '🪙', desc: 'Cada jugador aporta los mismos sats al bote.' },
+  rey: { id: 'rey', name: 'Rey de la pista', emoji: '👑', desc: 'El admin pone el bote final; los demás juegan gratis.' },
+};
+
+// Total pot in sats for a room, regardless of mode.
+export function totalPot(room) {
+  if (!room) return 0;
+  if (room.potMode === 'rey') return Math.max(0, Math.floor(room.finalPot || 0));
+  const funded = (room.players || []).filter((p) => p.funded).length;
+  return Math.max(0, Math.floor(room.potPerPlayer || 0)) * funded;
+}
+
 export function newRoomId() {
   const a = new Uint8Array(8);
   (globalThis.crypto || window.crypto).getRandomValues(a);

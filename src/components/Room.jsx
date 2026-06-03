@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
-import { GAMES } from '../lib/protocol';
+import { GAMES, totalPot } from '../lib/protocol';
 import Scoreboard from './Scoreboard';
 import GameBoard from './GameBoard';
 import FundingModal from './FundingModal';
@@ -18,7 +18,8 @@ export default function Room() {
 
   if (!room) return null;
   const me = room.players.find((p) => p.pubkey === pubkey);
-  const allFunded = room.players.length >= 2 && room.players.every((p) => p.funded);
+  const isRey = room.potMode === 'rey';
+  const canStart = room.players.length >= 2 && (isRey || room.players.every((p) => p.funded));
   const game = GAMES[room.currentGame];
 
   return (
@@ -27,7 +28,11 @@ export default function Room() {
         <div>
           <button className="text-xs text-slate-500 hover:text-arcade-cyan" onClick={leaveRoom}>← Salir de la sala</button>
           <h1 className="text-xl font-bold mt-1">{room.name}</h1>
-          <div className="text-xs text-slate-500 font-mono">sala {room.id.slice(0, 8)} · {room.potPerPlayer.toLocaleString()} sats/jugador</div>
+          <div className="text-xs text-slate-500 font-mono">
+            sala {room.id.slice(0, 8)} · {isRey
+              ? `👑 Rey de la pista · bote ${room.finalPot.toLocaleString()} sats`
+              : `🪙 Timba · ${room.potPerPlayer.toLocaleString()} sats/jugador`}
+          </div>
         </div>
         <span className={`chip ${room.status === 'playing' ? 'text-arcade-green' : room.status === 'finished' ? 'text-arcade-amber' : 'text-slate-400'}`}>
           {room.status === 'lobby' ? '⏳ esperando' : room.status === 'playing' ? '🎮 en juego' : '🏆 terminada'}
@@ -40,7 +45,14 @@ export default function Room() {
 
           {room.status === 'lobby' && (
             <div className="panel p-4 space-y-3">
-              {!me?.funded ? (
+              {isRey ? (
+                <div className="text-center text-sm">
+                  <div className="text-arcade-amber">👑 Bote del admin: <b>{room.finalPot.toLocaleString()} sats</b></div>
+                  <div className="text-slate-400 text-xs mt-1">
+                    {isHost ? 'Tú pones el bote. Pagarás al ganador al final.' : 'Juegas gratis. El ganador se lleva el bote del admin.'}
+                  </div>
+                </div>
+              ) : !me?.funded ? (
                 <button className="btn-neon w-full" onClick={() => setShowFund(true)}>
                   ⚡ Pagar mi parte ({room.potPerPlayer.toLocaleString()} sats)
                 </button>
@@ -48,8 +60,8 @@ export default function Room() {
                 <div className="text-center text-arcade-green text-sm">✓ Ya pusiste tu parte</div>
               )}
               {isHost && (
-                <button className="btn-ghost w-full" disabled={!allFunded} onClick={startMatch}>
-                  {allFunded ? 'Empezar partida' : 'Esperando que todos paguen…'}
+                <button className="btn-ghost w-full" disabled={!canStart} onClick={startMatch}>
+                  {canStart ? 'Empezar partida' : isRey ? 'Esperando jugadores…' : 'Esperando que todos paguen…'}
                 </button>
               )}
               <p className="text-[11px] text-slate-500 text-center">

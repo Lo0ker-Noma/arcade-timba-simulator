@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { requestInvoice, hasWebLN, payWithWebLN } from '../lib/lightning';
+import { totalPot as computePot } from '../lib/protocol';
 
 // Shown when a room finishes. The escrow holder (host) pays the full pot to the
 // winner's Lightning Address. If WebLN is present we try to auto-pay.
 export default function PayoutPanel({ room, isHost }) {
-  const totalPot = room.potPerPlayer * room.players.filter((p) => p.funded).length;
+  const totalPot = computePot(room);
   const winner = room.players.find((p) => p.pubkey === room.winner);
   const [state, setState] = useState('idle'); // idle|loading|invoice|paying|done|error
   const [invoice, setInvoice] = useState('');

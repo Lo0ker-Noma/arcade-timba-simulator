@@ -1,9 +1,10 @@
 import React from 'react';
+import { totalPot as computePot } from '../lib/protocol';
 
 export default function Scoreboard({ room }) {
   const players = [...room.players].sort((a, b) => (room.scores[b.pubkey] || 0) - (room.scores[a.pubkey] || 0));
-  const fundedCount = room.players.filter((p) => p.funded).length;
-  const totalPot = room.potPerPlayer * fundedCount;
+  const isRey = room.potMode === 'rey';
+  const totalPot = computePot(room);
 
   return (
     <div className="panel p-4">
@@ -24,7 +25,9 @@ export default function Scoreboard({ room }) {
                   {p.pubkey === room.host && <span className="text-[9px] text-arcade-purple">HOST</span>}
                 </div>
                 <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                  {p.funded ? <span className="text-arcade-green">⚡ pagó</span> : <span className="text-slate-600">sin pagar</span>}
+                  {isRey
+                    ? (p.pubkey === room.host ? <span className="text-arcade-amber">👑 admin (bote)</span> : <span className="text-slate-400">🎮 compite</span>)
+                    : (p.funded ? <span className="text-arcade-green">⚡ pagó</span> : <span className="text-slate-600">sin pagar</span>)}
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -38,7 +41,7 @@ export default function Scoreboard({ room }) {
         })}
       </div>
       <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
-        <span className="text-xs text-slate-400">BOTE ACTUAL</span>
+        <span className="text-xs text-slate-400">{isRey ? 'BOTE DEL ADMIN 👑' : 'BOTE ACTUAL'}</span>
         <span className="pixel text-arcade-green text-sm">{totalPot.toLocaleString()} sats</span>
       </div>
     </div>
