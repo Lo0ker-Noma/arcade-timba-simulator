@@ -106,7 +106,7 @@ function CreateModal({ onClose, createRoom, defaultLn }) {
           </div>
           <div>
             <label className="text-xs text-slate-400">Juego inicial</label>
-            <div className="grid grid-cols-5 gap-2 mt-1">
+            <div className="grid grid-cols-6 gap-2 mt-1">
               {Object.values(GAMES).map((g) => (
                 <button key={g.id} onClick={() => setGame(g.id)}
                   className={`p-2 rounded-lg text-center ${game === g.id ? 'bg-arcade-cyan/15 border border-arcade-cyan/40' : 'btn-ghost !p-2'}`}>

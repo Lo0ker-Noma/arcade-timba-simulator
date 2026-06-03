@@ -22,6 +22,7 @@
 | 🏓 Pong | 🕹️ Local (mismo dispositivo) | 2 |
 | 🐍 Snake Duel | 🕹️ Local (mismo dispositivo) | 2 |
 | 🏍️ Tron | 🕹️ Local (mismo dispositivo) | 2 |
+| 🧱 Tetris | 🕹️ Local — duelo de 2 tableros | 2 |
 
 Los juegos **por turnos** (Conecta 4, Tic Tac Toe) son multijugador remoto real: cada jugada viaja firmada por Nostr y los clientes reconstruyen el tablero de forma determinista. Los juegos de **acción en tiempo real** (Pong, Snake, Tron) corren en modo *party local* (mismo teclado) porque la latencia de relays públicos no da para físicas a 60fps — pero igualmente reportan el ganador al bote.
 

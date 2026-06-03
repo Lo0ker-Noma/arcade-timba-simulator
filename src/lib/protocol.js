@@ -24,6 +24,7 @@ export const GAMES = {
   pong: { id: 'pong', name: 'Pong', online: false, players: 2, emoji: '🏓' },
   snake: { id: 'snake', name: 'Snake Duel', online: false, players: 2, emoji: '🐍' },
   tron: { id: 'tron', name: 'Tron', online: false, players: 2, emoji: '🏍️' },
+  tetris: { id: 'tetris', name: 'Tetris', online: false, players: 2, emoji: '🧱' },
 };
 
 export const WIN_TARGETS = [3, 5, 7, 10, 12];

@@ -3,6 +3,7 @@ import Connect4 from '../games/Connect4';
 import TicTacToe from '../games/TicTacToe';
 import Pong from '../games/Pong';
 import Tron from '../games/Tron';
+import Tetris from '../games/Tetris';
 
 // Re-mounts the game on round change (key) so each round starts fresh.
 export default function GameBoard({ room, me }) {
@@ -17,6 +18,7 @@ export default function GameBoard({ room, me }) {
     case 'pong': return <Pong key={key} {...common} />;
     case 'tron': return <Tron key={key} {...common} variant="tron" />;
     case 'snake': return <Tron key={key} {...common} variant="snake" />;
+    case 'tetris': return <Tetris key={key} {...common} />;
     default: return <div className="text-slate-400">Juego desconocido</div>;
   }
 }
