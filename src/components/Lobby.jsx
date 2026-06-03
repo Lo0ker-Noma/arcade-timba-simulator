@@ -3,6 +3,7 @@ import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
 import { GAMES, WIN_TARGETS } from '../lib/protocol';
 import { isValidLightningAddress } from '../lib/lightning';
+import GamePreview from './GamePreview';
 
 export default function Lobby() {
   const { rooms, startLobby, stopLobby, createRoom, joinRoom } = useGameStore();
@@ -114,9 +115,13 @@ function CreateModal({ onClose, createRoom, defaultLn }) {
                 </button>
               ))}
             </div>
-            <div className="text-[10px] text-slate-500 mt-1">
-              {GAMES[game].online ? '🌐 online por turnos' : '🕹️ local (mismo dispositivo)'}
+            <div className="flex items-center justify-between mt-2 mb-1">
+              <span className="text-xs font-semibold text-arcade-cyan">{GAMES[game].emoji} {GAMES[game].name}</span>
+              <span className="text-[10px] text-slate-500">
+                {GAMES[game].online ? '🌐 online por turnos' : '🕹️ local (mismo dispositivo)'}
+              </span>
             </div>
+            <GamePreview game={game} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
