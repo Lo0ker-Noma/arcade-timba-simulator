@@ -35,8 +35,8 @@ export default function FundingModal({ room, onClose }) {
   const markPaid = async () => { await confirmFunded(); setState('done'); };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div className="panel max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="panel max-w-md w-full p-6">
         <h3 className="text-lg font-bold text-arcade-amber mb-1">⚡ Pon tu parte del bote</h3>
         <p className="text-sm text-slate-400 mb-4">
           Aportas <span className="text-arcade-cyan font-bold">{sats.toLocaleString()} sats</span> al bote.

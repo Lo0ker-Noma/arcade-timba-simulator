@@ -110,8 +110,8 @@ function CreateModal({ onClose, createRoom, defaultLn, detectedLn }) {
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div className="panel max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="panel max-w-md w-full p-6">
         <h3 className="text-lg font-bold text-arcade-cyan mb-4">Crear sala</h3>
         <div className="space-y-4">
           <div>

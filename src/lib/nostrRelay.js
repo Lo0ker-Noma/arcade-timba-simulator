@@ -156,7 +156,38 @@ function safeUrl(raw, maxLen = 500) {
   }
 }
 
-// One-shot metadata fetch for a pubkey (kind 0). Signature is verified;
+// Relays queried in parallel for profile metadata (kind:0). purplepag.es and
+// relay.nostr.band specialize in profile/outbox data, so a user's avatar/name
+// is far more likely to be found than hitting a single general relay.
+const PROFILE_RELAYS = [
+  DEFAULT_RELAY,
+  'wss://purplepag.es',
+  'wss://relay.nostr.band',
+  'wss://relay.primal.net',
+  'wss://nos.lol',
+];
+
+// Parse a verified kind:0 event into a sanitized profile, or null if invalid.
+function profileFromEvent(pubkey, event, fallback) {
+  let meta;
+  try { meta = JSON.parse(event.content); } catch { return null; }
+  if (!meta || typeof meta !== 'object') return null;
+  // lud16 = LUD-16 Lightning Address (user@domain) declared in kind:0.
+  const rawLud16 = cleanStr(meta.lud16, 120);
+  const lud16 = rawLud16 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawLud16) ? rawLud16.toLowerCase() : null;
+  return {
+    pubkey,
+    name: cleanStr(meta.display_name, 60) || cleanStr(meta.name, 60) || fallback.name,
+    picture: safeUrl(meta.picture) || fallback.picture,
+    nip05: cleanStr(meta.nip05, 120) || null,
+    about: cleanStr(meta.about, 500) || '',
+    lud16,
+    _createdAt: typeof event.created_at === 'number' ? event.created_at : 0,
+  };
+}
+
+// One-shot metadata fetch for a pubkey (kind 0). Races several relays and keeps
+// the newest valid (signature-verified) profile. Signatures are verified and
 // untrusted string fields are sanitized.
 export function fetchNostrProfile(pubkey) {
   return new Promise((resolve) => {
@@ -170,53 +201,46 @@ export function fetchNostrProfile(pubkey) {
     if (!/^[0-9a-f]{64}$/i.test(pubkey || '')) { resolve(fallback); return; }
 
     let resolved = false;
-    const safeResolve = (v) => { if (!resolved) { resolved = true; resolve(v); } };
+    let best = null;            // newest profile seen so far
+    const sockets = [];
+    const cleanup = () => { sockets.forEach((ws) => { try { ws.close(); } catch {} }); };
+    const finish = (v) => { if (!resolved) { resolved = true; clearTimeout(timer); cleanup(); resolve(v); } };
 
-    try {
-      if (!isSafeRelayUrl(DEFAULT_RELAY)) { safeResolve(fallback); return; }
-      const ws = new WebSocket(DEFAULT_RELAY);
-      const timer = setTimeout(() => { try { ws.close(); } catch {} safeResolve(fallback); }, 5000);
+    // Grace window: once we have a profile, wait briefly for a possibly-newer
+    // one from another relay, then resolve with the best.
+    let graceTimer = null;
+    const settleSoon = () => {
+      if (graceTimer) return;
+      graceTimer = setTimeout(() => finish(best || fallback), 800);
+    };
+    const timer = setTimeout(() => finish(best || fallback), 6000);
 
-      ws.onopen = () => {
-        ws.send(JSON.stringify(['REQ', 'meta', { kinds: [0], authors: [pubkey], limit: 1 }]));
-      };
+    const onProfile = (p) => {
+      if (!p) return;
+      if (!best || p._createdAt > best._createdAt) best = p;
+      settleSoon();
+    };
 
-      ws.onmessage = ({ data }) => {
-        if (typeof data !== 'string' || data.length > 64 * 1024) return;
-        let parsed;
-        try { parsed = JSON.parse(data); } catch { return; }
-        if (!Array.isArray(parsed)) return;
-        const [type, , event] = parsed;
-        if (type !== 'EVENT' || !event || event.kind !== 0) return;
-        if (!verifyNostrEvent(event)) return;
-
-        let meta;
-        try { meta = JSON.parse(event.content); } catch { meta = null; }
-        if (!meta || typeof meta !== 'object') {
-          clearTimeout(timer);
-          try { ws.close(); } catch {}
-          safeResolve(fallback);
-          return;
-        }
-        clearTimeout(timer);
-        try { ws.close(); } catch {}
-        // lud16 = LUD-16 Lightning Address (user@domain) declared in kind:0.
-        const rawLud16 = cleanStr(meta.lud16, 120);
-        const lud16 = rawLud16 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawLud16) ? rawLud16.toLowerCase() : null;
-        safeResolve({
-          pubkey,
-          name: cleanStr(meta.display_name, 60) || cleanStr(meta.name, 60) || fallback.name,
-          picture: safeUrl(meta.picture) || fallback.picture,
-          nip05: cleanStr(meta.nip05, 120) || null,
-          about: cleanStr(meta.about, 500) || '',
-          lud16,
-        });
-      };
-
-      ws.onerror = () => { clearTimeout(timer); safeResolve(fallback); };
-      ws.onclose = () => { /* handled above */ };
-    } catch {
-      safeResolve(fallback);
+    for (const url of PROFILE_RELAYS) {
+      if (!isSafeRelayUrl(url)) continue;
+      try {
+        const ws = new WebSocket(url);
+        sockets.push(ws);
+        ws.onopen = () => {
+          try { ws.send(JSON.stringify(['REQ', 'meta', { kinds: [0], authors: [pubkey], limit: 1 }])); } catch {}
+        };
+        ws.onmessage = ({ data }) => {
+          if (typeof data !== 'string' || data.length > 64 * 1024) return;
+          let parsed;
+          try { parsed = JSON.parse(data); } catch { return; }
+          if (!Array.isArray(parsed)) return;
+          const [type, , event] = parsed;
+          if (type !== 'EVENT' || !event || event.kind !== 0) return;
+          if (!verifyNostrEvent(event)) return;
+          onProfile(profileFromEvent(pubkey, event, fallback));
+        };
+        ws.onerror = () => { try { ws.close(); } catch {} };
+      } catch { /* skip this relay */ }
     }
   });
 }
