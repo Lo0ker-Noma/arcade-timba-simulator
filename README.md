@@ -1,5 +1,7 @@
 # 👾 Arcade Timba Simulator
 
+### 🔴 EN VIVO → **[arcade-timba-simulator.vercel.app](https://arcade-timba-simulator.vercel.app)**
+
 **Arcade multijugador con bote en Lightning.** Juega con tus amigos a clásicos del arcade, cada uno rellena el bote, configuras a cuántas victorias se gana (primero a 7, 10, 12…) y **el ganador se lleva todos los sats automáticamente por Lightning**.
 
 > 🎮 **Hackaton #04 · [La Crypta](https://lacrypta.dev/)** — Bitcoin, Lightning y Nostr.
