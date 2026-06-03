@@ -6,7 +6,9 @@ import { useGameStore } from '../store/gameStore';
 // Player 2 (amber): ← → move · ↓ soft-drop · ↑ rotate · Enter hard-drop.
 // The first player to top out loses the round; the other wins it.
 const COLS = 10, ROWS = 20, CELL = 18;
-const TICK = 650; // gravity ms
+const SIDE = 92;                 // right-hand panel width (next piece + stats)
+const BASE_TICK = 700;           // level-0 gravity ms
+const gravityFor = (lvl) => Math.max(90, BASE_TICK - lvl * 65); // speeds up per level
 
 const SHAPES = {
   I: [[1, 1, 1, 1]],
@@ -27,9 +29,17 @@ function rotate(m) {
   return out;
 }
 
+function spawn(k) { return { k, m: SHAPES[k].map((r) => [...r]), x: 3, y: 0 }; }
+function randKey() { return KEYS[(Math.random() * KEYS.length) | 0]; }
+
 function newGame() {
-  const pick = () => { const k = KEYS[(Math.random() * KEYS.length) | 0]; return { k, m: SHAPES[k].map((r) => [...r]), x: 3, y: 0 }; };
-  return { grid: Array.from({ length: ROWS }, () => Array(COLS).fill(null)), piece: pick(), score: 0, dead: false, pick };
+  return {
+    grid: Array.from({ length: ROWS }, () => Array(COLS).fill(null)),
+    piece: spawn(randKey()),
+    nextKey: randKey(),
+    score: 0, lines: 0, level: 0, dead: false,
+    acc: 0,           // accumulated gravity time (ms)
+  };
 }
 
 function collides(g, m, x, y) {
@@ -54,8 +64,11 @@ function merge(state) {
       grid.splice(r, 1); grid.unshift(Array(COLS).fill(null)); cleared++; r++;
     }
   }
-  state.score += [0, 100, 300, 500, 800][cleared];
-  const np = state.pick();
+  state.score += [0, 100, 300, 500, 800][cleared] * (state.level + 1);
+  state.lines += cleared;
+  state.level = Math.floor(state.lines / 10); // level up every 10 lines
+  const np = spawn(state.nextKey);
+  state.nextKey = randKey();
   if (collides(grid, np.m, np.x, np.y)) { state.dead = true; }
   state.piece = np;
 }
@@ -88,8 +101,33 @@ export default function Tetris({ me, pair, names }) {
 
   useEffect(() => {
     const ctx = canvasRef.current.getContext('2d');
-    const BW = COLS * CELL, GAP = 40;
-    const ox = [0, BW + GAP];
+    const BW = COLS * CELL, GAP = 36;
+    const UNIT = BW + SIDE;
+    const ox = [0, UNIT + GAP];
+
+    const drawPanel = (s, x0, accent) => {
+      const px = x0 + BW + 10;
+      ctx.fillStyle = 'rgba(148,163,184,0.6)';
+      ctx.font = '10px "Press Start 2P", monospace';
+      ctx.fillText('NEXT', px, 14);
+      // next piece preview
+      const nm = SHAPES[s.nextKey];
+      const cs = 14;
+      ctx.fillStyle = COLORS[s.nextKey];
+      nm.forEach((row, r) => row.forEach((v, c) => {
+        if (v) ctx.fillRect(px + c * cs, 24 + r * cs, cs - 1, cs - 1);
+      }));
+      // stats
+      ctx.fillStyle = accent;
+      ctx.font = '9px "Press Start 2P", monospace';
+      ctx.fillText('SCORE', px, 96);
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillText(String(s.score).padStart(5, '0'), px, 112);
+      ctx.fillStyle = accent;
+      ctx.fillText('LINES', px, 138); ctx.fillStyle = '#e2e8f0'; ctx.fillText(String(s.lines), px, 154);
+      ctx.fillStyle = accent;
+      ctx.fillText('LEVEL', px, 180); ctx.fillStyle = '#e2e8f0'; ctx.fillText(String(s.level), px, 196);
+    };
 
     const drawBoard = (s, x0, accent) => {
       ctx.fillStyle = '#0a0e1a'; ctx.fillRect(x0, 0, BW, ROWS * CELL);
@@ -103,18 +141,22 @@ export default function Tetris({ me, pair, names }) {
           if (v) ctx.fillRect(x0 + (s.piece.x + c) * CELL, (s.piece.y + r) * CELL, CELL - 1, CELL - 1);
         }));
       }
+      drawPanel(s, x0, accent);
     };
 
     let last = performance.now();
     let raf;
     const loop = (t) => {
-      if (t - last > TICK) {
-        last = t;
-        gamesRef.current.forEach((s) => {
-          if (s.dead) return;
-          if (!collides(s.grid, s.piece.m, s.piece.x, s.piece.y + 1)) s.piece.y += 1; else merge(s);
-        });
-      }
+      const dt = t - last; last = t;
+      gamesRef.current.forEach((s) => {
+        if (s.dead) return;
+        s.acc += dt;
+        const tick = gravityFor(s.level);
+        while (s.acc >= tick) {
+          s.acc -= tick;
+          if (!collides(s.grid, s.piece.m, s.piece.x, s.piece.y + 1)) s.piece.y += 1; else { merge(s); break; }
+        }
+      });
       drawBoard(gamesRef.current[0], ox[0], '#22d3ee');
       drawBoard(gamesRef.current[1], ox[1], '#f59e0b');
 
@@ -134,8 +176,6 @@ export default function Tetris({ me, pair, names }) {
     return () => cancelAnimationFrame(raf);
   }, [pair, reportResult]);
 
-  const [s0, s1] = gamesRef.current;
-
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="flex items-center gap-10 pixel text-xs">
@@ -145,7 +185,7 @@ export default function Tetris({ me, pair, names }) {
       </div>
       <canvas
         ref={canvasRef}
-        width={COLS * CELL * 2 + 40}
+        width={(COLS * CELL + SIDE) * 2 + 36}
         height={ROWS * CELL}
         className="rounded-xl border border-arcade-purple/30 shadow-neon-purple max-w-full"
       />
