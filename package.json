@@ -1,0 +1,28 @@
+{
+  "name": "arcade-timba-simulator",
+  "version": "0.1.0",
+  "description": "Arcade multijugador con bote en Lightning y login Nostr — Hackaton #04 La Crypta",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext js,jsx"
+  },
+  "dependencies": {
+    "nostr-tools": "^2.23.3",
+    "qrcode.react": "^4.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.4.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.4.28",
+    "tailwindcss": "^3.3.0",
+    "terser": "^5.46.1",
+    "vite": "^4.4.9"
+  }
+}

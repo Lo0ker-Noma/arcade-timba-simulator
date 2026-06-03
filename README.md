@@ -1,0 +1,71 @@
+# 👾 Arcade Timba Simulator
+
+**Arcade multijugador con bote en Lightning.** Juega con tus amigos a clásicos del arcade, cada uno rellena el bote, configuras a cuántas victorias se gana (primero a 7, 10, 12…) y **el ganador se lleva todos los sats automáticamente por Lightning**.
+
+> 🎮 **Hackaton #04 · [La Crypta](https://lacrypta.dev/)** — Bitcoin, Lightning y Nostr.
+
+---
+
+## ⚡ Cómo funciona
+
+1. **Login con Nostr** (NIP-07 — Alby, nos2x…). Tu identidad es tu pubkey, sin registros ni passwords.
+2. **Crea una sala**: eliges el juego, el bote por jugador (en sats) y a cuántas victorias se gana.
+3. **Rellenad el bote**: cada jugador paga su parte por Lightning al *escrow* de la sala. El marcador se sincroniza en tiempo real vía relays Nostr.
+4. **Cobro automático**: cuando alguien llega al objetivo de victorias, el bote completo se envía a su Lightning Address mediante un zap.
+
+## 🕹️ Juegos
+
+| Juego | Modo | Jugadores |
+|-------|------|-----------|
+| 🔴 Conecta 4 | 🌐 Online por turnos (Nostr) | 2 |
+| ⭕ Tic Tac Toe | 🌐 Online por turnos (Nostr) | 2 |
+| 🏓 Pong | 🕹️ Local (mismo dispositivo) | 2 |
+| 🐍 Snake Duel | 🕹️ Local (mismo dispositivo) | 2 |
+| 🏍️ Tron | 🕹️ Local (mismo dispositivo) | 2 |
+
+Los juegos **por turnos** (Conecta 4, Tic Tac Toe) son multijugador remoto real: cada jugada viaja firmada por Nostr y los clientes reconstruyen el tablero de forma determinista. Los juegos de **acción en tiempo real** (Pong, Snake, Tron) corren en modo *party local* (mismo teclado) porque la latencia de relays públicos no da para físicas a 60fps — pero igualmente reportan el ganador al bote.
+
+## 🏦 El bote (escrow — Opción A)
+
+Versión *hackathon-friendly*, **sin backend**:
+
+- El creador de la sala pone su **Lightning Address** como escrow.
+- Cada jugador paga su parte resolviendo esa dirección (LNURL-pay / LUD-16) → factura BOLT11 → pago con **WebLN** (Alby) o escaneando el QR.
+- Al terminar, el escrow paga el bote completo a la **Lightning Address del ganador**.
+
+> Requiere confianza en el host (tiene la custodia temporal del bote). Una **Opción B** custodial real (wallet efímera por sala vía LNbits/Strike) puede sustituir `resolvePayout` sin tocar el resto de la app.
+
+## 🛠️ Stack
+
+- **React + Vite + TailwindCSS**
+- **nostr-tools** — identidad NIP-07, eventos firmados y verificados
+- **LNURL-pay / WebLN** — facturas y pagos Lightning
+- Estado de sala sobre **relays Nostr** (eventos `kind:30420` replaceable para el documento de sala + `kind:2420` para jugadas)
+
+Toda la verificación de firmas se hace en cliente (`src/lib/nostrRelay.js`) para impedir spoofing de pubkeys desde relays hostiles.
+
+## 🚀 Desarrollo
+
+```bash
+npm install
+npm run dev      # http://localhost:5174
+npm run build
+```
+
+Relay por defecto: `wss://relay.damus.io` (configurable con `VITE_NOSTR_RELAY`).
+
+Necesitas una extensión Nostr (NIP-07) y, para pagos automáticos, una wallet WebLN como [Alby](https://getalby.com).
+
+## 📁 Estructura
+
+```
+src/
+  lib/        nostrRelay.js · lightning.js · protocol.js
+  store/      authStore.js (NIP-07) · gameStore.js (salas/bote)
+  games/      Connect4 · TicTacToe · Pong · Tron(+Snake)
+  components/ Landing · Lobby · Room · Scoreboard · FundingModal · PayoutPanel
+```
+
+---
+
+Construido con ⚡ para el Hackaton #04 de [lacrypta.dev](https://lacrypta.dev/).
