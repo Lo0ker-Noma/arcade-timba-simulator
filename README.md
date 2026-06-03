@@ -67,6 +67,20 @@ src/
   components/ Landing · Lobby · Room · Scoreboard · FundingModal · PayoutPanel
 ```
 
+## 🎬 Demo
+
+1. Abre la app (`npm run dev`) en dos navegadores con extensión Nostr (NIP-07).
+2. En uno: **Entrar con Nostr** → **Crear sala** (elige juego, bote en sats y “primero a N victorias”) → pon tu Lightning Address como escrow.
+3. En el otro: entra, pon tu Lightning Address y únete con el código de sala.
+4. Cada jugador paga su parte del bote (WebLN/Alby o QR). El host pulsa **Empezar**.
+5. Jugáis las rondas; el marcador se actualiza en vivo. Al llegar al objetivo, el bote completo se envía a la Lightning Address del ganador.
+
+> Juegos online por turnos (Conecta 4, Tic Tac Toe) = multijugador remoto real. Pong/Snake/Tron/Tetris = modo party local (mismo dispositivo) que reporta el ganador al bote.
+
+## 📜 Licencia
+
+[MIT](./LICENSE) — código abierto. Úsalo, modifícalo y compártelo.
+
 ---
 
 Construido con ⚡ para el Hackaton #04 de [lacrypta.dev](https://lacrypta.dev/).
