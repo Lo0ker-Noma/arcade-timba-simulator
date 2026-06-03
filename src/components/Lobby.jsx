@@ -106,7 +106,7 @@ function CreateModal({ onClose, createRoom, defaultLn }) {
           </div>
           <div>
             <label className="text-xs text-slate-400">Juego inicial</label>
-            <div className="grid grid-cols-6 gap-2 mt-1">
+            <div className="grid grid-cols-7 gap-2 mt-1">
               {Object.values(GAMES).map((g) => (
                 <button key={g.id} onClick={() => setGame(g.id)}
                   className={`p-2 rounded-lg text-center ${game === g.id ? 'bg-arcade-cyan/15 border border-arcade-cyan/40' : 'btn-ghost !p-2'}`}>
@@ -126,7 +126,7 @@ function CreateModal({ onClose, createRoom, defaultLn }) {
             <div>
               <label className="text-xs text-slate-400">Primero a… victorias</label>
               <select className="w-full mt-1" value={target} onChange={(e) => setTarget(e.target.value)}>
-                {WIN_TARGETS.map((t) => <option key={t} value={t}>{t}</option>)}
+                {WIN_TARGETS.map((t) => <option key={t} value={t}>{t === 1 ? '1 (a una partida)' : t}</option>)}
               </select>
             </div>
           </div>
