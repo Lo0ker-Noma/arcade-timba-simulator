@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuthStore } from '../store/authStore';
 import { GAMES } from '../lib/protocol';
+import DotMatrix from './DotMatrix';
 
 export default function Landing() {
   const initNostr = useAuthStore((s) => s.initNostr);
@@ -37,12 +38,7 @@ export default function Landing() {
 
           <div className="panel p-6 relative">
             <div className="absolute top-4 right-4 chip text-arcade-amber pixel text-[9px]">PRESS START</div>
-            <div className="grid grid-cols-8 gap-2">
-              {Array.from({ length: 40 }).map((_, i) => {
-                const on = [1, 3, 4, 9, 11, 16, 18, 19, 24, 27, 32, 34, 35].includes(i % 40);
-                return <div key={i} className="aspect-square rounded-md" style={{ background: on ? '#22d3ee' : 'rgba(34,211,238,0.07)', boxShadow: on ? '0 0 10px rgba(34,211,238,0.6)' : 'none' }} />;
-              })}
-            </div>
+            <DotMatrix text="HDMP GAMING BTC · " />
             <div className="flex items-center justify-between mt-5">
               <span className="chip text-arcade-purple pixel text-[9px]">BOSS LEVEL</span>
               <div className="w-10 h-10 rounded-full grid place-items-center text-arcade-amber" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)' }}>⚡</div>
