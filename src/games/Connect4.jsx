@@ -34,7 +34,7 @@ function checkWin(board, player) {
   return false;
 }
 
-export default function Connect4({ me, pair, names }) {
+export default function Connect4({ me, pair, names, hotseat = false }) {
   const sendMove = useGameStore((s) => s.sendMove);
   const reportResult = useGameStore((s) => s.reportResult);
   const [board, setBoard] = useState(emptyBoard);
@@ -44,7 +44,8 @@ export default function Connect4({ me, pair, names }) {
 
   const meIdx = pair.indexOf(me); // 0 -> red(1), 1 -> yellow(2)
   const turnIdx = movesRef.current.length % 2;
-  const myTurn = meIdx === turnIdx && winner === 0;
+  // In hotseat (single-device) mode you control whichever side is to move.
+  const myTurn = (hotseat || meIdx === turnIdx) && winner === 0;
 
   const applyMove = (seq, col, byIdx) => {
     if (seq !== movesRef.current.length) return;
@@ -83,8 +84,9 @@ export default function Connect4({ me, pair, names }) {
   const play = (col) => {
     if (!myTurn || dropRow(board, col) === -1) return;
     const seq = movesRef.current.length;
-    applyMove(seq, col, meIdx);
-    sendMove({ seq, col });
+    const byIdx = hotseat ? turnIdx : meIdx;
+    applyMove(seq, col, byIdx);
+    if (!hotseat) sendMove({ seq, col });
   };
 
   const status = winner

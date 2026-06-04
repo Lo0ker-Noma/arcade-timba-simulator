@@ -4,7 +4,7 @@ import { GAMES } from '../lib/protocol';
 import DotMatrix from './DotMatrix';
 import GamesCarousel from './GamesCarousel';
 
-export default function Landing() {
+export default function Landing({ onSolo }) {
   const initNostr = useAuthStore((s) => s.initNostr);
   const login = async () => {
     if (!window.nostr) { alert('Instala una extensión Nostr (NIP-07) como Alby o nos2x.'); return; }
@@ -28,8 +28,10 @@ export default function Landing() {
             </p>
             <div className="flex flex-wrap gap-3 mt-6">
               <button className="btn-neon" onClick={login}>⚡ Entrar con Nostr</button>
+              <button className="btn-ghost" onClick={onSolo}>🕹️ Single game</button>
               <a className="btn-ghost" href="https://lacrypta.dev/" target="_blank" rel="noreferrer">La Crypta ↗</a>
             </div>
+            <p className="text-[11px] text-slate-500 mt-2">¿Solo quieres probar los juegos? Entra en <b className="text-slate-300">Single game</b> sin login.</p>
             <div className="flex flex-wrap gap-2 mt-6">
               {Object.values(GAMES).map((g) => (
                 <span key={g.id} className="chip text-slate-300">{g.emoji} {g.name}</span>

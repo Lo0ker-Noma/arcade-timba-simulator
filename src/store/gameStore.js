@@ -34,6 +34,11 @@ export const useGameStore = create((set, get) => ({
   isHost: false,
   funding: { state: 'idle', invoice: null, error: null }, // idle|requesting|invoice|paid|error
 
+  // Single-player / practice mode (no Nostr, no pot) — for testing all games.
+  soloMode: false,
+  enterSolo: () => set({ soloMode: true }),
+  exitSolo: () => set({ soloMode: false }),
+
   // ---- Lobby subscription ----
   startLobby: () => {
     if (get().lobbyUnsub) return;

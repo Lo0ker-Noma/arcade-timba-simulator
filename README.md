@@ -15,6 +15,10 @@
 3. **Rellenad el bote**: cada jugador paga su parte por Lightning al *escrow* de la sala. El marcador se sincroniza en tiempo real vía relays Nostr.
 4. **Cobro automático**: cuando alguien llega al objetivo de victorias, el bote completo se envía a su Lightning Address mediante un zap.
 
+## 🕹️ Single game (modo práctica)
+
+Botón **Single game** en la cabecera / portada: prueba cualquier juego **solo, sin login Nostr ni bote**. Los juegos por turnos (Conecta 4, Tic Tac Toe) se juegan en *hotseat* (controlas ambos lados). Ideal para testear y dar feedback.
+
 ## 🕹️ Juegos
 
 | Juego | Modo | Jugadores |

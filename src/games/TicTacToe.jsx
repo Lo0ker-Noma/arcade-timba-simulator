@@ -16,7 +16,7 @@ function winnerOf(cells) {
   return null;
 }
 
-export default function TicTacToe({ me, pair, names }) {
+export default function TicTacToe({ me, pair, names, hotseat = false }) {
   const sendMove = useGameStore((s) => s.sendMove);
   const reportResult = useGameStore((s) => s.reportResult);
   const [cells, setCells] = useState(Array(9).fill(null));
@@ -25,7 +25,8 @@ export default function TicTacToe({ me, pair, names }) {
 
   const meIdx = pair.indexOf(me);      // 0 -> X, 1 -> O, -1 -> spectator
   const turnIdx = movesRef.current.length % 2;
-  const myTurn = meIdx === turnIdx && winnerOf(cells) === null && cells.includes(null);
+  // In hotseat (single-device) mode you control whichever side is to move.
+  const myTurn = (hotseat || meIdx === turnIdx) && winnerOf(cells) === null && cells.includes(null);
 
   const applyMove = (seq, cell, byIdx) => {
     if (seq !== movesRef.current.length) return; // out of order / dupe
@@ -64,8 +65,9 @@ export default function TicTacToe({ me, pair, names }) {
   const play = (i) => {
     if (!myTurn || cells[i]) return;
     const seq = movesRef.current.length;
-    applyMove(seq, i, meIdx);
-    sendMove({ seq, cell: i });
+    const byIdx = hotseat ? turnIdx : meIdx;
+    applyMove(seq, i, byIdx);
+    if (!hotseat) sendMove({ seq, cell: i });
   };
 
   const w = winnerOf(cells);
