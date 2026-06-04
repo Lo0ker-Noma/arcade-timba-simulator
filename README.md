@@ -23,15 +23,29 @@ Botón **Single game** en la cabecera / portada: prueba cualquier juego **solo, 
 
 | Juego | Modo | Jugadores |
 |-------|------|-----------|
-| 🔴 Conecta 4 | 🌐 Online por turnos (Nostr) | 2 |
-| ⭕ Tic Tac Toe | 🌐 Online por turnos (Nostr) | 2 |
-| 🏓 Pong | 🕹️ Local (mismo dispositivo) | 2 |
-| 🐍 Snake Duel | 🕹️ Local (mismo dispositivo) | 2 |
-| 🏍️ Tron | 🕹️ Local (mismo dispositivo) | 2 |
-| 🧱 Tetris | 🕹️ Local — duelo de 2 tableros | 2 |
-| 🪳 Kuka Exterminator | 🕹️ Local — FPS por turnos (60s) | 2 |
+| 🔴 Conecta 4 | 🌐 Online por turnos | 2 |
+| ⭕ Tic Tac Toe | 🌐 Online por turnos | 2 |
+| 🏓 Pong | 🌐 Online tiempo real (host-autoritativo) | 2 |
+| 🐍 Snake Duel | 🌐 Online tiempo real (host-autoritativo) | 2 |
+| 🏍️ Tron | 🌐 Online tiempo real (host-autoritativo) | 2 |
+| 🧱 Tetris | 🌐 Online — duelo paralelo de 2 tableros | 2 |
+| 🪳 Kuka Exterminator | 🌐 Online — 60s simultáneos | 2 |
 
-Los juegos **por turnos** (Conecta 4, Tic Tac Toe) son multijugador remoto real: cada jugada viaja firmada por Nostr y los clientes reconstruyen el tablero de forma determinista. Los juegos de **acción en tiempo real** (Pong, Snake, Tron) corren en modo *party local* (mismo teclado) porque la latencia de relays públicos no da para físicas a 60fps — pero igualmente reportan el ganador al bote.
+**Todos los juegos son online y simultáneos.** Ver la sección de tiempo real abajo.
+
+## ⚡ Tiempo real sobre Nostr (claves de sesión efímeras)
+
+Firmar cada fotograma con la extensión NIP-07 es inviable. Solución (`src/lib/realtime.js`):
+
+1. Al empezar la partida, cada jugador genera una **clave de sesión efímera** en el navegador.
+2. Anuncia **una vez** la vinculación `pubkey real → pubkey de sesión` con un mensaje firmado por NIP-07 (así nadie puede suplantar).
+3. Todos los eventos de juego de alta frecuencia se firman **localmente** con la clave de sesión (schnorr ≈ 1 ms, sin extensión) y se publican en un **kind efímero (24420)** que los relays difunden pero no almacenan.
+
+**Netcode por juego:**
+- **Pong / Tron / Snake**: el `host` (jugador 1) simula la física y difunde el estado ~15 Hz; el `guest` envía solo sus inputs y predice su lado localmente.
+- **Tetris**: paralelo — cada uno corre su tablero y difunde un snapshot comprimido ~5 Hz; el primero que se desborda pierde.
+- **Kuka**: paralelo — ambos juegan sus 60 s a la vez y difunden su marcador; gana quien más mate.
+- **Conecta 4 / Tic Tac Toe**: por turnos, cada jugada firmada por Nostr (poca frecuencia, sin necesidad de claves de sesión).
 
 ## 🏦 El bote (escrow — Opción A)
 

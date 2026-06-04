@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
 import { GAMES, totalPot } from '../lib/protocol';
@@ -13,8 +13,16 @@ export default function Room() {
   const startMatch = useGameStore((s) => s.startMatch);
   const setGame = useGameStore((s) => s.setGame);
   const leaveRoom = useGameStore((s) => s.leaveRoom);
+  const beginRealtime = useGameStore((s) => s.beginRealtime);
+  const endRealtime = useGameStore((s) => s.endRealtime);
   const pubkey = useAuthStore((s) => s.pubkey);
   const [showFund, setShowFund] = useState(false);
+
+  const status = room?.status;
+  // Start the ephemeral realtime channel once the match is underway.
+  useEffect(() => {
+    if (status === 'playing') { beginRealtime(); return () => endRealtime(); }
+  }, [status, beginRealtime, endRealtime]);
 
   if (!room) return null;
   const me = room.players.find((p) => p.pubkey === pubkey);

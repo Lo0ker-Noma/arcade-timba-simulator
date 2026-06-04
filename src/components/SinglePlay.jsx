@@ -50,7 +50,7 @@ export default function SinglePlay({ onExit }) {
           {renderGame(sel, round)}
         </div>
         <p className="text-center text-xs text-slate-500 mt-3">
-          Modo práctica · {g.online ? 'controlas ambos lados (hotseat)' : 'mismo dispositivo'} · sin bote ni login
+          Modo práctica en solitario · sin bote ni login. Para jugar <b className="text-slate-300">online con un amigo a la vez</b>, entra a una sala con Nostr.
         </p>
       </div>
     );

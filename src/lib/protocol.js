@@ -21,11 +21,11 @@ export const APP_TAG = 'arcade-timba-v1';
 export const GAMES = {
   connect4: { id: 'connect4', name: 'Conecta 4', online: true, players: 2, emoji: '🔴' },
   tictactoe: { id: 'tictactoe', name: 'Tic Tac Toe', online: true, players: 2, emoji: '⭕' },
-  pong: { id: 'pong', name: 'Pong', online: false, players: 2, emoji: '🏓' },
-  snake: { id: 'snake', name: 'Snake Duel', online: false, players: 2, emoji: '🐍' },
-  tron: { id: 'tron', name: 'Tron', online: false, players: 2, emoji: '🏍️' },
-  tetris: { id: 'tetris', name: 'Tetris', online: false, players: 2, emoji: '🧱' },
-  kuka: { id: 'kuka', name: 'Kuka Exterminator', online: false, players: 2, emoji: '🪳' },
+  pong: { id: 'pong', name: 'Pong', online: true, players: 2, emoji: '🏓' },
+  snake: { id: 'snake', name: 'Snake Duel', online: true, players: 2, emoji: '🐍' },
+  tron: { id: 'tron', name: 'Tron', online: true, players: 2, emoji: '🏍️' },
+  tetris: { id: 'tetris', name: 'Tetris', online: true, players: 2, emoji: '🧱' },
+  kuka: { id: 'kuka', name: 'Kuka Exterminator', online: true, players: 2, emoji: '🪳' },
 };
 
 export const WIN_TARGETS = [1, 3, 5, 7, 10, 12];

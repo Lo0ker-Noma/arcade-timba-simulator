@@ -5,6 +5,7 @@ import {
   buildRoomEvent, buildMsgEvent, parseContent,
 } from '../lib/protocol';
 import { useAuthStore } from './authStore';
+import { startRealtime, stopRealtime, bindSession } from '../lib/realtime';
 
 const DEV = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
 
@@ -172,6 +173,11 @@ export const useGameStore = create((set, get) => ({
   // ---- Message handling ----
   _handleMsg: (msg, fromPubkey) => {
     const isHost = get().isHost;
+    // Session-key binding for realtime (signed by the real key, so trusted).
+    if (msg.type === 'session' && typeof msg.sessionPubkey === 'string') {
+      bindSession(fromPubkey, msg.sessionPubkey);
+      return;
+    }
     // Host applies authoritative state transitions
     if (isHost) {
       if (msg.type === 'join') {
@@ -256,6 +262,16 @@ export const useGameStore = create((set, get) => ({
     if (!r) return;
     await signAndPublish(buildMsgEvent(r.id, { v: 1, type: 'move', game: r.currentGame, data }));
   },
+
+  // ---- Realtime (ephemeral session-key) channel for action games ----
+  beginRealtime: async () => {
+    const r = get().room;
+    if (!r) return;
+    await startRealtime(r.id, async (m) => {
+      await signAndPublish(buildMsgEvent(r.id, { v: 1, ...m }));
+    });
+  },
+  endRealtime: () => stopRealtime(),
 
   // Report a finished round's winner to the host.
   reportResult: async (winnerPubkey) => {
