@@ -14,7 +14,7 @@ function checkWin(b, p) {
   return false;
 }
 
-export default function Connect4({ onGameOver }) {
+export default function Connect4({ onGameOver, level = 1 }) {
   const [board, setBoard] = useState(emptyBoard);
   const [turn, setTurn] = useState(1); // 1 = you, 2 = AI
   const [winner, setWinner] = useState(0);
@@ -23,15 +23,15 @@ export default function Connect4({ onGameOver }) {
 
   const finish = (win, draw) => {
     if (endedRef.current) return; endedRef.current = true;
-    const score = win === 1 ? Math.max(700, 1000 - movesRef.current * 8) : win === 2 ? 100 : 500;
-    setTimeout(() => onGameOver && onGameOver(score), 600);
+    const base = win === 1 ? Math.max(700, 1000 - movesRef.current * 8) : win === 2 ? 100 : 500;
+    setTimeout(() => onGameOver && onGameOver(base * level, win === 1), 600);
   };
 
   useEffect(() => {
     if (turn !== 2 || winner || endedRef.current) return;
     const t = setTimeout(() => {
       setBoard((prev) => {
-        const col = connect4AI(prev.map((r) => [...r]));
+        const col = connect4AI(prev.map((r) => [...r]), level);
         if (col < 0) return prev;
         const r = dropRow(prev, col); if (r === -1) return prev;
         const next = prev.map((row) => [...row]); next[r][col] = 2; movesRef.current++;

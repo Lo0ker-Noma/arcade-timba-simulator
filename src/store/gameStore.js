@@ -231,17 +231,20 @@ export const useGameStore = create((set, get) => ({
     if (roundScoreStore[round][fromPubkey] == null) {
       roundScoreStore[round][fromPubkey] = Number(msg.score) || 0;
     }
-    const [a, b] = r.activePair;
-    const sa = roundScoreStore[round][a], sb = roundScoreStore[round][b];
-    if (sa == null || sb == null) return; // wait for both
-    const winner = sa >= sb ? a : b; // tie → player A (host's choice)
+    const participants = r.activePair;
+    const got = roundScoreStore[round];
+    if (!participants.every((p) => got[p] != null)) return; // wait for everyone
+    // winner = highest score this round
+    let winner = participants[0];
+    for (const p of participants) if (got[p] > got[winner]) winner = p;
     get().publishRoom((rr) => {
       if (rr._lastRound === round || rr.status !== 'playing') return rr;
       rr.scores[winner] = (rr.scores[winner] || 0) + 1;
+      rr.points = rr.points || {};
+      participants.forEach((p) => { rr.points[p] = (rr.points[p] || 0) + (got[p] || 0); });
       rr._lastRound = round;
-      rr.lastRoundScores = { [a]: sa, [b]: sb, winner };
+      rr.lastRoundScores = { ...got, winner };
       rr.round += 1;
-      rr.activePair = [a, b];
       if (rr.scores[winner] >= rr.winTarget) { rr.status = 'finished'; rr.winner = winner; }
       return rr;
     });
@@ -286,7 +289,10 @@ export const useGameStore = create((set, get) => ({
       if (r.players.length < 2) return r;
       r.status = 'playing';
       r.round = 1;
-      r.activePair = [r.players[0].pubkey, r.players[1].pubkey];
+      // All players participate each round (vs the machine); highest score wins.
+      r.activePair = r.players.map((p) => p.pubkey);
+      r.points = r.points || {};
+      r.players.forEach((p) => { if (r.points[p.pubkey] == null) r.points[p.pubkey] = 0; });
       return r;
     });
     const r = get().room;

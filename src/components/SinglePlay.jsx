@@ -11,8 +11,8 @@ import Kuka from '../games/Kuka';
 // Single-player / practice mode: pick any game and play it solo on one device,
 // no Nostr login or pot. Turn-based games run in "hotseat" (you control both
 // sides). reportResult/sendMove are no-ops here (the game store has no room).
-function renderGame(id, round, onGameOver) {
-  const common = { onGameOver };
+function renderGame(id, round, onGameOver, level) {
+  const common = { onGameOver, level };
   const key = `${id}-${round}`;
   switch (id) {
     case 'connect4': return <Connect4 key={key} {...common} />;
@@ -29,11 +29,18 @@ function renderGame(id, round, onGameOver) {
 export default function SinglePlay({ onExit }) {
   const [sel, setSel] = useState(null);
   const [round, setRound] = useState(0);
+  const [level, setLevel] = useState(1);
   const [lastScore, setLastScore] = useState(null);
+  const [lastWon, setLastWon] = useState(false);
+  const [total, setTotal] = useState(0);
   const games = Object.values(GAMES);
 
+  const openGame = (id) => { setSel(id); setRound(0); setLevel(1); setTotal(0); setLastScore(null); };
   const replay = () => { setLastScore(null); setRound((r) => r + 1); };
-  const onGameOver = (score) => setLastScore(score);
+  const onGameOver = (score, won) => {
+    setLastScore(score); setLastWon(won); setTotal((t) => t + score);
+    if (won) setLevel((l) => l + 1); // win → next level a bit harder
+  };
 
   if (sel) {
     const g = GAMES[sel];
@@ -47,17 +54,37 @@ export default function SinglePlay({ onExit }) {
             <button className="btn-ghost !py-1.5 !px-3 text-xs" onClick={onExit}>Salir</button>
           </div>
         </div>
-        <div className="glass-panel p-6 min-h-[440px] flex items-center justify-center arcade-grid">
-          {renderGame(sel, round, onGameOver)}
+
+        {/* Big scoreboard: level · last points · running total */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="glass-panel py-3 text-center">
+            <div className="text-[10px] tracking-widest text-slate-400">NIVEL</div>
+            <div className="pixel text-2xl text-arcade-purple neon-text-purple mt-1">{level}</div>
+          </div>
+          <div className="glass-panel py-3 text-center">
+            <div className="text-[10px] tracking-widest text-slate-400">ÚLTIMA PARTIDA</div>
+            <div className="pixel text-2xl text-arcade-cyan neon-text mt-1">{lastScore != null ? lastScore : '—'}</div>
+          </div>
+          <div className="glass-panel py-3 text-center">
+            <div className="text-[10px] tracking-widest text-slate-400">TOTAL</div>
+            <div className="pixel text-2xl text-arcade-green mt-1">{total}</div>
+          </div>
         </div>
+
+        <div className="glass-panel p-6 min-h-[440px] flex items-center justify-center arcade-grid">
+          {renderGame(sel, round, onGameOver, level)}
+        </div>
+
         {lastScore != null ? (
           <div className="text-center mt-3">
-            <span className="glass-chip text-arcade-green">🏁 Tu puntuación: {lastScore}</span>
+            <span className="glass-chip text-arcade-green">
+              {lastWon ? `🏆 ¡Ganaste! +${lastScore} pts · subes a nivel ${level}` : `🏁 +${lastScore} pts · sigue en nivel ${level}`}
+            </span>
             <button className="btn-neon !py-1.5 !px-4 text-xs ml-2" onClick={replay}>Jugar otra ▶</button>
           </div>
         ) : (
           <p className="text-center text-xs text-slate-500 mt-3">
-            Juegas <b className="text-slate-300">contra la máquina</b>. En una sala con Nostr, tu puntuación compite por el bote: el que más puntúa gana.
+            Juegas <b className="text-slate-300">contra la máquina</b>. Cada victoria sube el nivel (más difícil = más puntos). En una sala con Nostr, tu puntuación compite por el bote y verás el ranking de todos.
           </p>
         )}
       </div>
@@ -76,7 +103,7 @@ export default function SinglePlay({ onExit }) {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {games.map((g) => (
-          <button key={g.id} onClick={() => { setSel(g.id); setRound(0); }} className="glass-panel p-3 text-left hover:border-arcade-cyan/40 transition group">
+          <button key={g.id} onClick={() => openGame(g.id)} className="glass-panel p-3 text-left hover:border-arcade-cyan/40 transition group">
             <GamePreview game={g.id} />
             <div className="flex items-center gap-2 mt-3">
               <span className="text-2xl">{g.emoji}</span>

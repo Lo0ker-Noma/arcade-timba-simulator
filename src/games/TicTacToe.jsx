@@ -6,7 +6,7 @@ import { ticTacToeAI } from './ai';
 const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
 const winnerOf = (c) => { for (const [a, b, d] of LINES) if (c[a] && c[a] === c[b] && c[a] === c[d]) return c[a]; return null; };
 
-export default function TicTacToe({ onGameOver, soloMode }) {
+export default function TicTacToe({ onGameOver, level = 1 }) {
   const [cells, setCells] = useState(Array(9).fill(null));
   const [turn, setTurn] = useState('X'); // X = you
   const movesRef = useRef(0);
@@ -15,8 +15,8 @@ export default function TicTacToe({ onGameOver, soloMode }) {
   const finish = (c) => {
     if (endedRef.current) return; endedRef.current = true;
     const w = winnerOf(c);
-    const score = w === 'X' ? Math.max(700, 1000 - movesRef.current * 10) : w === 'O' ? 100 : 500;
-    setTimeout(() => onGameOver && onGameOver(score), 500);
+    const base = w === 'X' ? Math.max(700, 1000 - movesRef.current * 10) : w === 'O' ? 100 : 500;
+    setTimeout(() => onGameOver && onGameOver(base * level, w === 'X'), 500);
   };
 
   // AI move when it's O's turn
@@ -25,7 +25,7 @@ export default function TicTacToe({ onGameOver, soloMode }) {
     const t = setTimeout(() => {
       setCells((prev) => {
         if (winnerOf(prev) || !prev.includes(null)) return prev;
-        const i = ticTacToeAI(prev);
+        const i = ticTacToeAI(prev, level);
         if (i == null || i < 0) return prev;
         const next = [...prev]; next[i] = 'O'; movesRef.current++;
         if (winnerOf(next) || !next.includes(null)) finish(next); else setTurn('X');

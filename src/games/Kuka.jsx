@@ -3,14 +3,16 @@ import React, { useEffect, useRef, useState } from 'react';
 // 🪳 Kuka Exterminator — solo 60s score-attack. Splat as many roaches as you
 // can; your kills are your score. Each player plays their own run; most kills
 // wins the round.
-const W = 600, H = 380, ROUND_MS = 60000, MAX_ROACHES = 6;
+const W = 600, H = 380, ROUND_MS = 60000;
 
-function spawnRoach() {
+function spawnRoach(spd = 2.2) {
   const edge = Math.random() < 0.5;
-  return { x: edge ? Math.random() * W : (Math.random() < 0.5 ? -20 : W + 20), y: edge ? (Math.random() < 0.5 ? -20 : H + 20) : Math.random() * H, vx: (Math.random() * 2 - 1) * 2.2, vy: (Math.random() * 2 - 1) * 2.2, size: 13 + Math.random() * 7, phase: Math.random() * Math.PI * 2 };
+  return { x: edge ? Math.random() * W : (Math.random() < 0.5 ? -20 : W + 20), y: edge ? (Math.random() < 0.5 ? -20 : H + 20) : Math.random() * H, vx: (Math.random() * 2 - 1) * spd, vy: (Math.random() * 2 - 1) * spd, size: 13 + Math.random() * 7, phase: Math.random() * Math.PI * 2 };
 }
 
-export default function Kuka({ onGameOver }) {
+export default function Kuka({ onGameOver, level = 1 }) {
+  const roachCount = 6 + (level - 1);
+  const roachSpeed = 2.2 + (level - 1) * 0.4;
   const canvasRef = useRef(null);
   const roaches = useRef([]);
   const splats = useRef([]);
@@ -22,7 +24,7 @@ export default function Kuka({ onGameOver }) {
   const [over, setOver] = useState(false);
 
   useEffect(() => {
-    roaches.current = Array.from({ length: MAX_ROACHES }, spawnRoach);
+    roaches.current = Array.from({ length: roachCount }, () => spawnRoach(roachSpeed));
     const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
     const start = performance.now(); let raf;
     const onMove = (e) => { const r = canvas.getBoundingClientRect(); mouse.current.x = (e.clientX - r.left) * (W / r.width); mouse.current.y = (e.clientY - r.top) * (H / r.height); };
@@ -31,7 +33,7 @@ export default function Kuka({ onGameOver }) {
       mouse.current.flash = 6; const { x, y } = mouse.current;
       let best = -1, bestD = Infinity;
       roaches.current.forEach((rch, i) => { const d = Math.hypot(rch.x - x, rch.y - y); if (d < rch.size + 6 && d < bestD) { bestD = d; best = i; } });
-      if (best >= 0) { splats.current.push({ x: roaches.current[best].x, y: roaches.current[best].y, t: 1 }); roaches.current[best] = spawnRoach(); killsRef.current++; setKills(killsRef.current); }
+      if (best >= 0) { splats.current.push({ x: roaches.current[best].x, y: roaches.current[best].y, t: 1 }); roaches.current[best] = spawnRoach(roachSpeed); killsRef.current++; setKills(killsRef.current); }
     };
     canvas.addEventListener('mousemove', onMove); canvas.addEventListener('mousedown', onShoot);
 
@@ -52,7 +54,7 @@ export default function Kuka({ onGameOver }) {
       splats.current.forEach((s) => { ctx.fillStyle = `rgba(80,40,20,${s.t * 0.6})`; ctx.beginPath(); ctx.arc(s.x, s.y, 14 * (1.4 - s.t), 0, 7); ctx.fill(); s.t -= 0.03; });
       if (left > 0) roaches.current.forEach((r) => {
         r.phase += 0.4; if (Math.random() < 0.03) { r.vx += (Math.random() * 2 - 1); r.vy += (Math.random() * 2 - 1); }
-        const sp = Math.hypot(r.vx, r.vy) || 1, max = 3.2; if (sp > max) { r.vx = r.vx / sp * max; r.vy = r.vy / sp * max; }
+        const sp = Math.hypot(r.vx, r.vy) || 1, max = 3.2 + (level - 1) * 0.5; if (sp > max) { r.vx = r.vx / sp * max; r.vy = r.vy / sp * max; }
         r.x += r.vx; r.y += r.vy;
         if (r.x < -30) r.x = W + 30; if (r.x > W + 30) r.x = -30; if (r.y < -30) r.y = H + 30; if (r.y > H + 30) r.y = -30;
         drawRoach(r);
@@ -61,12 +63,12 @@ export default function Kuka({ onGameOver }) {
       if (m.flash > 0) { ctx.fillStyle = `rgba(255,220,120,${m.flash / 6 * 0.5})`; ctx.beginPath(); ctx.arc(m.x, m.y, 26, 0, 7); ctx.fill(); m.flash -= 1; }
       ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(m.x, m.y, 14, 0, 7); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(m.x - 20, m.y); ctx.lineTo(m.x - 6, m.y); ctx.moveTo(m.x + 6, m.y); ctx.lineTo(m.x + 20, m.y); ctx.moveTo(m.x, m.y - 20); ctx.lineTo(m.x, m.y - 6); ctx.moveTo(m.x, m.y + 6); ctx.lineTo(m.x, m.y + 20); ctx.stroke();
-      if (left <= 0 && !endedRef.current) { endedRef.current = true; setOver(true); setTimeout(() => onGameOver && onGameOver(killsRef.current), 500); return; }
+      if (left <= 0 && !endedRef.current) { endedRef.current = true; setOver(true); setTimeout(() => onGameOver && onGameOver(killsRef.current * level, killsRef.current > 0), 500); return; }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => { cancelAnimationFrame(raf); canvas.removeEventListener('mousemove', onMove); canvas.removeEventListener('mousedown', onShoot); };
-  }, [onGameOver]);
+  }, [onGameOver, level, roachCount, roachSpeed]);
 
   return (
     <div className="flex flex-col items-center gap-3 select-none">

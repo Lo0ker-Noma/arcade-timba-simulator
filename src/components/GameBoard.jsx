@@ -15,7 +15,9 @@ export default function GameBoard({ room }) {
 
   const onGameOver = (score) => { setSubmitted(true); submitScore(score); };
   const key = `${room.currentGame}-${room.round}`;
-  const common = { onGameOver };
+  // Everyone plays the same difficulty each round (= round number), so it's fair.
+  const level = room.round || 1;
+  const common = { onGameOver, level };
 
   let game = null;
   switch (room.currentGame) {

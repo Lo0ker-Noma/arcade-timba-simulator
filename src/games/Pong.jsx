@@ -4,13 +4,15 @@ import React, { useEffect, useRef, useState } from 'react';
 // Each player plays their own match vs the AI; more goals wins the round.
 const W = 640, H = 360, PADDLE_H = 70, PADDLE_W = 10, BALL = 9, MATCH_MS = 45000;
 
-export default function Pong({ onGameOver }) {
+export default function Pong({ onGameOver, level = 1 }) {
   const canvasRef = useRef(null);
   const keys = useRef({});
   const endedRef = useRef(false);
   const [score, setScore] = useState([0, 0]);
   const [timeLeft, setTimeLeft] = useState(45);
-  const st = useRef({ ly: H / 2, ry: H / 2, bx: W / 2, by: H / 2, vx: 4.2, vy: 2.4, s: [0, 0] });
+  const ballSpeed = 4.2 + (level - 1) * 0.7;
+  const aiSpeed = 5.0 + (level - 1) * 0.45;
+  const st = useRef({ ly: H / 2, ry: H / 2, bx: W / 2, by: H / 2, vx: ballSpeed, vy: 2.4, s: [0, 0] });
 
   useEffect(() => {
     const down = (e) => { if (['ArrowUp', 'ArrowDown', 'w', 's', 'W', 'S'].includes(e.key)) e.preventDefault(); keys.current[e.key] = true; };
@@ -24,7 +26,7 @@ export default function Pong({ onGameOver }) {
     const s = st.current;
     const start = performance.now();
     let raf;
-    const reset = (dir) => { s.bx = W / 2; s.by = H / 2; s.vx = 4.2 * dir; s.vy = (Math.random() * 4 - 2); };
+    const reset = (dir) => { s.bx = W / 2; s.by = H / 2; s.vx = ballSpeed * dir; s.vy = (Math.random() * 4 - 2); };
 
     const loop = (now) => {
       const left = Math.max(0, MATCH_MS - (now - start));
@@ -37,7 +39,7 @@ export default function Pong({ onGameOver }) {
       // AI paddle: tracks ball with limited speed + small reaction error
       const target = s.by + (Math.sin(now / 240) * 14);
       const diff = target - s.ry;
-      s.ry += Math.max(-5.2, Math.min(5.2, diff));
+      s.ry += Math.max(-aiSpeed, Math.min(aiSpeed, diff));
       s.ry = Math.max(PADDLE_H / 2, Math.min(H - PADDLE_H / 2, s.ry));
 
       s.bx += s.vx; s.by += s.vy;
@@ -54,12 +56,12 @@ export default function Pong({ onGameOver }) {
       ctx.fillStyle = '#f59e0b'; ctx.fillRect(W - PADDLE_W, s.ry - PADDLE_H / 2, PADDLE_W, PADDLE_H);
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.bx, s.by, BALL, 0, Math.PI * 2); ctx.fill();
 
-      if (left <= 0 && !endedRef.current) { endedRef.current = true; setTimeout(() => onGameOver && onGameOver(s.s[0]), 400); return; }
+      if (left <= 0 && !endedRef.current) { endedRef.current = true; const won = s.s[0] >= s.s[1]; setTimeout(() => onGameOver && onGameOver(s.s[0] * level, won), 400); return; }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [onGameOver]);
+  }, [onGameOver, ballSpeed, aiSpeed, level]);
 
   return (
     <div className="flex flex-col items-center gap-3">

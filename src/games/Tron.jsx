@@ -4,12 +4,12 @@ import React, { useEffect, useRef, useState } from 'react';
 // seconds survived ×100, +5000 bonus if you outlast the machine.
 const CELL = 12, COLS = 48, ROWS = 30;
 
-export default function Tron({ onGameOver, variant = 'tron' }) {
+export default function Tron({ onGameOver, variant = 'tron', level = 1 }) {
   const canvasRef = useRef(null);
   const endedRef = useRef(false);
   const [result, setResult] = useState(null); // 'win' | 'lose'
   const dirRef = useRef([1, 0]);
-  const speed = variant === 'snake' ? 90 : 55;
+  const speed = Math.max(28, (variant === 'snake' ? 90 : 55) - (level - 1) * 4);
 
   useEffect(() => {
     const map = { w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0], W: [0, -1], S: [0, 1], A: [-1, 0], D: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
@@ -50,9 +50,9 @@ export default function Tron({ onGameOver, variant = 'tron' }) {
     const end = (won) => {
       if (endedRef.current) return; endedRef.current = true; alive = false;
       const secs = (performance.now() - start) / 1000;
-      const score = Math.round(secs * 100) + (won ? 5000 : 0);
+      const score = Math.round((secs * 100 + (won ? 3000 : 0)) * level);
       setResult(won ? 'win' : 'lose');
-      setTimeout(() => onGameOver && onGameOver(score), 500);
+      setTimeout(() => onGameOver && onGameOver(score, won), 500);
     };
 
     const interval = setInterval(() => {

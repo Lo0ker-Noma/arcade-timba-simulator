@@ -12,7 +12,7 @@ const KEYS = Object.keys(SHAPES);
 const rotate = (m) => { const R = m.length, C = m[0].length, o = Array.from({ length: C }, () => Array(R).fill(0)); for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) o[c][R - 1 - r] = m[r][c]; return o; };
 const randKey = () => KEYS[(Math.random() * KEYS.length) | 0];
 const spawn = (k) => ({ k, m: SHAPES[k].map((r) => [...r]), x: 3, y: 0 });
-function newGame() { return { grid: Array.from({ length: ROWS }, () => Array(COLS).fill(null)), piece: spawn(randKey()), nextKey: randKey(), score: 0, lines: 0, level: 0, dead: false, acc: 0 }; }
+function newGame(startLevel = 0) { return { grid: Array.from({ length: ROWS }, () => Array(COLS).fill(null)), piece: spawn(randKey()), nextKey: randKey(), score: 0, lines: 0, level: startLevel, baseLevel: startLevel, dead: false, acc: 0 }; }
 function collides(g, m, x, y) { for (let r = 0; r < m.length; r++) for (let c = 0; c < m[r].length; c++) { if (!m[r][c]) continue; const nx = x + c, ny = y + r; if (nx < 0 || nx >= COLS || ny >= ROWS) return true; if (ny >= 0 && g[ny][nx]) return true; } return false; }
 function merge(s) {
   const { grid, piece } = s;
@@ -20,15 +20,15 @@ function merge(s) {
   let cleared = 0;
   for (let r = ROWS - 1; r >= 0; r--) if (grid[r].every((c) => c)) { grid.splice(r, 1); grid.unshift(Array(COLS).fill(null)); cleared++; r++; }
   s.score += [0, 100, 300, 500, 800][cleared] * (s.level + 1);
-  s.lines += cleared; s.level = Math.floor(s.lines / 10);
+  s.lines += cleared; s.level = (s.baseLevel || 0) + Math.floor(s.lines / 10);
   const np = spawn(s.nextKey); s.nextKey = randKey();
   if (collides(grid, np.m, np.x, np.y)) s.dead = true;
   s.piece = np;
 }
 
-export default function Tetris({ onGameOver }) {
+export default function Tetris({ onGameOver, level = 1 }) {
   const canvasRef = useRef(null);
-  const game = useRef(newGame());
+  const game = useRef(newGame(level - 1));
   const endedRef = useRef(false);
   const [over, setOver] = useState(false);
   const [score, setScore] = useState(0);
@@ -64,7 +64,7 @@ export default function Tetris({ onGameOver }) {
       ctx.fillStyle = '#22d3ee'; ctx.fillText('LINES', px, 156); ctx.fillStyle = '#e2e8f0'; ctx.fillText(String(s.lines), px, 174);
       ctx.fillStyle = '#22d3ee'; ctx.fillText('LEVEL', px, 202); ctx.fillStyle = '#e2e8f0'; ctx.fillText(String(s.level), px, 220);
       setScore(s.score);
-      if (s.dead && !endedRef.current) { endedRef.current = true; setOver(true); setTimeout(() => onGameOver && onGameOver(s.score), 600); }
+      if (s.dead && !endedRef.current) { endedRef.current = true; setOver(true); setTimeout(() => onGameOver && onGameOver(s.score, s.lines > 0), 600); }
       if (!s.dead) raf = requestAnimationFrame(loop); else raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);

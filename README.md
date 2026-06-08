@@ -38,6 +38,12 @@ En vez de sincronizar física entre jugadores (frágil sobre relays públicos), 
 
 Ventajas: robusto (solo se firma una vez por ronda, no por fotograma), sin backend, y cada quien juega a su ritmo. En **Single game** juegas vs la IA sin bote.
 
+### Dificultad progresiva y ranking
+
+- **Niveles**: cada victoria sube el nivel — la IA es más dura, los juegos más rápidos, y **más dificultad da más puntos** (la puntuación se multiplica por el nivel).
+- **Marcador grande**: en Single game se ven NIVEL · ÚLTIMA PARTIDA · TOTAL acumulado.
+- **Salas de N jugadores**: todos compiten cada ronda; el de mayor puntuación gana la ronda. El **ranking en vivo** (🥇🥈🥉) ordena por puntos acumulados de todos los conectados, en tiempo real vía Nostr.
+
 ## 🏦 El bote (escrow — Opción A)
 
 Versión *hackathon-friendly*, **sin backend**:

@@ -15,10 +15,12 @@ function c4Wins(board, player) {
   }
   return false;
 }
-export function connect4AI(board) {
+export function connect4AI(board, level = 1) {
   const valid = [];
   for (let c = 0; c < C4_COLS; c++) if (c4DropRow(board, c) !== -1) valid.push(c);
   if (!valid.length) return -1;
+  // higher level → fewer top choices considered randomly (more focused/center)
+  const topN = level >= 3 ? 1 : 2;
   // win now
   for (const c of valid) { const r = c4DropRow(board, c); board[r][c] = 2; const w = c4Wins(board, 2); board[r][c] = 0; if (w) return c; }
   // block your win
@@ -33,7 +35,7 @@ export function connect4AI(board) {
   const pool = safe.length ? safe : valid;
   // center-biased
   pool.sort((a, b) => Math.abs(3 - a) - Math.abs(3 - b));
-  const top = pool.slice(0, Math.min(2, pool.length));
+  const top = pool.slice(0, Math.min(topN, pool.length));
   return top[(Math.random() * top.length) | 0];
 }
 
@@ -54,10 +56,11 @@ function minimax(cells, ai) {
   }
   return best;
 }
-export function ticTacToeAI(cells) {
-  // small chance of a non-optimal move so it's beatable
+export function ticTacToeAI(cells, level = 1) {
+  // higher level → less randomness (harder to beat)
   const empties = cells.map((c, i) => (c ? -1 : i)).filter((i) => i >= 0);
   if (!empties.length) return -1;
-  if (Math.random() < 0.12) return empties[(Math.random() * empties.length) | 0];
+  const randChance = Math.max(0, 0.22 - (level - 1) * 0.05);
+  if (Math.random() < randChance) return empties[(Math.random() * empties.length) | 0];
   return minimax([...cells], true).i ?? empties[0];
 }
