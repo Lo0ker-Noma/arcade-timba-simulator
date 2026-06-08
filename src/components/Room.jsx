@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
 import { GAMES, totalPot } from '../lib/protocol';
@@ -13,16 +13,8 @@ export default function Room() {
   const startMatch = useGameStore((s) => s.startMatch);
   const setGame = useGameStore((s) => s.setGame);
   const leaveRoom = useGameStore((s) => s.leaveRoom);
-  const beginRealtime = useGameStore((s) => s.beginRealtime);
-  const endRealtime = useGameStore((s) => s.endRealtime);
   const pubkey = useAuthStore((s) => s.pubkey);
   const [showFund, setShowFund] = useState(false);
-
-  const status = room?.status;
-  // Start the ephemeral realtime channel once the match is underway.
-  useEffect(() => {
-    if (status === 'playing') { beginRealtime(); return () => endRealtime(); }
-  }, [status, beginRealtime, endRealtime]);
 
   if (!room) return null;
   const me = room.players.find((p) => p.pubkey === pubkey);
@@ -104,9 +96,14 @@ export default function Room() {
             <div className="w-full">
               <div className="text-center mb-4">
                 <span className="chip text-arcade-purple">{game?.emoji} {game?.name}</span>
-                {!game?.online && <span className="ml-2 text-[11px] text-amber-400">modo local (mismo dispositivo)</span>}
+                <span className="ml-2 text-[11px] text-slate-400">ronda {room.round} · juegas vs la máquina</span>
+                {room.lastRoundScores && (
+                  <div className="text-[11px] text-arcade-green mt-1">
+                    Ronda anterior: {room.players.find((p) => p.pubkey === room.lastRoundScores.winner)?.name || '—'} ganó
+                  </div>
+                )}
               </div>
-              <GameBoard room={room} me={pubkey} />
+              <GameBoard key={room.round} room={room} />
             </div>
           ) : (
             <div className="text-center text-slate-500">

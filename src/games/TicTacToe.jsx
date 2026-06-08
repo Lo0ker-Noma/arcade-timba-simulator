@@ -1,102 +1,65 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useGameStore, onGameMessage } from '../store/gameStore';
+import { ticTacToeAI } from './ai';
 
-// Online turn-based. Board state is derived from the ordered list of moves;
-// each move carries its seq so both clients converge deterministically.
-const LINES = [
-  [0, 1, 2], [3, 4, 5], [6, 7, 8],
-  [0, 3, 6], [1, 4, 7], [2, 5, 8],
-  [0, 4, 8], [2, 4, 6],
-];
+// You (X) vs the machine (O). Score = win:1000-moves·10, draw:500, loss:100.
+// Each player plays their own match vs the AI; higher score wins the round.
+const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+const winnerOf = (c) => { for (const [a, b, d] of LINES) if (c[a] && c[a] === c[b] && c[a] === c[d]) return c[a]; return null; };
 
-function winnerOf(cells) {
-  for (const [a, b, c] of LINES) {
-    if (cells[a] && cells[a] === cells[b] && cells[a] === cells[c]) return cells[a];
-  }
-  return null;
-}
-
-export default function TicTacToe({ me, pair, names, hotseat = false }) {
-  const sendMove = useGameStore((s) => s.sendMove);
-  const reportResult = useGameStore((s) => s.reportResult);
+export default function TicTacToe({ onGameOver, soloMode }) {
   const [cells, setCells] = useState(Array(9).fill(null));
-  const movesRef = useRef([]);
-  const reportedRef = useRef(false);
+  const [turn, setTurn] = useState('X'); // X = you
+  const movesRef = useRef(0);
+  const endedRef = useRef(false);
 
-  const meIdx = pair.indexOf(me);      // 0 -> X, 1 -> O, -1 -> spectator
-  const turnIdx = movesRef.current.length % 2;
-  // In hotseat (single-device) mode you control whichever side is to move.
-  const myTurn = (hotseat || meIdx === turnIdx) && winnerOf(cells) === null && cells.includes(null);
-
-  const applyMove = (seq, cell, byIdx) => {
-    if (seq !== movesRef.current.length) return; // out of order / dupe
-    setCells((prev) => {
-      if (prev[cell]) return prev;
-      const next = [...prev];
-      next[cell] = byIdx === 0 ? 'X' : 'O';
-      movesRef.current = [...movesRef.current, { cell, byIdx }];
-      return next;
-    });
+  const finish = (c) => {
+    if (endedRef.current) return; endedRef.current = true;
+    const w = winnerOf(c);
+    const score = w === 'X' ? Math.max(700, 1000 - movesRef.current * 10) : w === 'O' ? 100 : 500;
+    setTimeout(() => onGameOver && onGameOver(score), 500);
   };
 
+  // AI move when it's O's turn
   useEffect(() => {
-    const off = onGameMessage((msg, from) => {
-      if (msg.type !== 'move' || msg.game !== 'tictactoe') return;
-      const byIdx = pair.indexOf(from);
-      if (byIdx === -1) return;
-      const { seq, cell } = msg.data || {};
-      if (typeof seq !== 'number' || typeof cell !== 'number') return;
-      if (byIdx !== seq % 2) return; // wrong player's turn
-      applyMove(seq, cell, byIdx);
-    });
-    return off;
-  }, [pair]);
-
-  // Report winner once a line completes.
-  useEffect(() => {
-    const w = winnerOf(cells);
-    if (w && !reportedRef.current) {
-      reportedRef.current = true;
-      const winnerPubkey = pair[w === 'X' ? 0 : 1];
-      reportResult(winnerPubkey);
-    }
-  }, [cells, pair, reportResult]);
+    if (turn !== 'O' || endedRef.current) return;
+    const t = setTimeout(() => {
+      setCells((prev) => {
+        if (winnerOf(prev) || !prev.includes(null)) return prev;
+        const i = ticTacToeAI(prev);
+        if (i == null || i < 0) return prev;
+        const next = [...prev]; next[i] = 'O'; movesRef.current++;
+        if (winnerOf(next) || !next.includes(null)) finish(next); else setTurn('X');
+        return next;
+      });
+    }, 420);
+    return () => clearTimeout(t);
+  }, [turn]);
 
   const play = (i) => {
-    if (!myTurn || cells[i]) return;
-    const seq = movesRef.current.length;
-    const byIdx = hotseat ? turnIdx : meIdx;
-    applyMove(seq, i, byIdx);
-    if (!hotseat) sendMove({ seq, cell: i });
+    if (turn !== 'X' || cells[i] || endedRef.current) return;
+    const next = [...cells]; next[i] = 'X'; movesRef.current++;
+    setCells(next);
+    if (winnerOf(next) || !next.includes(null)) finish(next); else setTurn('O');
   };
 
   const w = winnerOf(cells);
   const full = !cells.includes(null);
-  const status = w
-    ? `¡Gana ${names[pair[w === 'X' ? 0 : 1]] || '—'}!`
-    : full ? 'Empate — nueva ronda' : myTurn ? 'Tu turno' : meIdx === -1 ? 'Mirando partida' : 'Turno del rival';
+  const status = w === 'X' ? '¡Ganaste a la máquina!' : w === 'O' ? 'Te ganó la máquina' : full ? 'Empate' : turn === 'X' ? 'Tu turno (X)' : 'La máquina piensa…';
 
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="text-sm text-slate-300">{status}</div>
       <div className="grid grid-cols-3 gap-2">
         {cells.map((c, i) => (
-          <button
-            key={i}
-            onClick={() => play(i)}
-            disabled={!myTurn || !!c}
+          <button key={i} onClick={() => play(i)} disabled={turn !== 'X' || !!c || endedRef.current}
             className={`w-20 h-20 rounded-xl text-3xl font-bold flex items-center justify-center transition
-              ${c === 'X' ? 'text-arcade-cyan neon-text' : c === 'O' ? 'text-arcade-pink' : 'text-slate-600'}
-              ${myTurn && !c ? 'hover:border-arcade-cyan/60' : ''}`}
-            style={{ background: 'rgba(10,14,26,0.8)', border: '1px solid rgba(148,163,184,0.18)' }}
-          >
+              ${c === 'X' ? 'text-arcade-cyan neon-text' : c === 'O' ? 'text-arcade-pink' : 'text-slate-600'}`}
+            style={{ background: 'rgba(10,14,26,0.8)', border: '1px solid rgba(148,163,184,0.18)' }}>
             {c}
           </button>
         ))}
       </div>
-      <div className="text-xs text-slate-500">
-        {names[pair[0]] || '?'} = <span className="text-arcade-cyan">X</span> · {names[pair[1]] || '?'} = <span className="text-arcade-pink">O</span>
-      </div>
+      <div className="text-xs text-slate-500">Tú = <span className="text-arcade-cyan">X</span> · Máquina = <span className="text-arcade-pink">O</span></div>
     </div>
   );
 }

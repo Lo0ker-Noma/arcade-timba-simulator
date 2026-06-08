@@ -16,6 +16,9 @@ export function onGameMessage(fn) {
   return () => moveListeners.delete(fn);
 }
 
+// Host-only, in-memory tally of per-round scores: { round: { pubkey: score } }.
+const roundScoreStore = {};
+
 async function signAndPublish(unsigned) {
   const auth = useAuthStore.getState();
   const signed = await auth.signEvent(unsigned);
@@ -202,14 +205,58 @@ export const useGameStore = create((set, get) => ({
           return r;
         });
       } else if (msg.type === 'gameresult') {
-        // A game reported a winner of the current round.
+        // A game reported a winner of the current round (legacy path).
         get()._applyResult(msg, fromPubkey);
+      } else if (msg.type === 'score') {
+        // Score-attack model: each player plays vs the machine and submits a
+        // score; higher score wins the round.
+        get()._recordScore(msg, fromPubkey);
       }
     }
-    // Everyone forwards moves to local game listeners
-    if (msg.type === 'move' || msg.type === 'gamestart' || msg.type === 'gameresult') {
+    // Everyone forwards to local game listeners
+    if (msg.type === 'move' || msg.type === 'gamestart' || msg.type === 'gameresult' || msg.type === 'score') {
       moveListeners.forEach((fn) => { try { fn(msg, fromPubkey); } catch {} });
     }
+  },
+
+  // Host: record a participant's score for the current round; once every active
+  // participant has submitted, the highest score wins the round.
+  _recordScore: (msg, fromPubkey) => {
+    const r = get().room;
+    if (!r || r.status !== 'playing') return;
+    if (!r.activePair || !r.activePair.includes(fromPubkey)) return;
+    const round = Number(msg.round);
+    if (!Number.isFinite(round) || round !== r.round) return;
+    roundScoreStore[round] = roundScoreStore[round] || {};
+    if (roundScoreStore[round][fromPubkey] == null) {
+      roundScoreStore[round][fromPubkey] = Number(msg.score) || 0;
+    }
+    const [a, b] = r.activePair;
+    const sa = roundScoreStore[round][a], sb = roundScoreStore[round][b];
+    if (sa == null || sb == null) return; // wait for both
+    const winner = sa >= sb ? a : b; // tie → player A (host's choice)
+    get().publishRoom((rr) => {
+      if (rr._lastRound === round || rr.status !== 'playing') return rr;
+      rr.scores[winner] = (rr.scores[winner] || 0) + 1;
+      rr._lastRound = round;
+      rr.lastRoundScores = { [a]: sa, [b]: sb, winner };
+      rr.round += 1;
+      rr.activePair = [a, b];
+      if (rr.scores[winner] >= rr.winTarget) { rr.status = 'finished'; rr.winner = winner; }
+      return rr;
+    });
+  },
+
+  // Player: submit this round's score (vs the machine) to the host.
+  submitScore: async (score) => {
+    const r = get().room;
+    if (!r) return;
+    const auth = useAuthStore.getState();
+    const payload = { v: 1, type: 'score', round: r.round, score: Math.round(Number(score) || 0) };
+    // Host records its own score locally too (idempotent), in case the relay
+    // doesn't echo the author's own event back.
+    if (get().isHost && auth.pubkey) get()._recordScore(payload, auth.pubkey);
+    await signAndPublish(buildMsgEvent(r.id, payload));
   },
 
   // Host: increment score for round winner, check win target, set winner.

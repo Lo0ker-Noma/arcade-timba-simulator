@@ -1,77 +1,39 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useGameStore } from '../store/gameStore';
-import { onRealtime, sendRealtime } from '../lib/realtime';
 
-// 🪳 Kuka Exterminator — ONLINE & simultaneous. Both players run their own 60s
-// roach-shooting session at the same time and stream their kill count; you see
-// the opponent's score live. Most kills when both finish wins the round.
-const W = 560, H = 360, ROUND_MS = 60000, MAX_ROACHES = 6;
+// 🪳 Kuka Exterminator — solo 60s score-attack. Splat as many roaches as you
+// can; your kills are your score. Each player plays their own run; most kills
+// wins the round.
+const W = 600, H = 380, ROUND_MS = 60000, MAX_ROACHES = 6;
 
 function spawnRoach() {
   const edge = Math.random() < 0.5;
-  return {
-    x: edge ? Math.random() * W : (Math.random() < 0.5 ? -20 : W + 20),
-    y: edge ? (Math.random() < 0.5 ? -20 : H + 20) : Math.random() * H,
-    vx: (Math.random() * 2 - 1) * 2.2, vy: (Math.random() * 2 - 1) * 2.2,
-    size: 13 + Math.random() * 7, phase: Math.random() * Math.PI * 2,
-  };
+  return { x: edge ? Math.random() * W : (Math.random() < 0.5 ? -20 : W + 20), y: edge ? (Math.random() < 0.5 ? -20 : H + 20) : Math.random() * H, vx: (Math.random() * 2 - 1) * 2.2, vy: (Math.random() * 2 - 1) * 2.2, size: 13 + Math.random() * 7, phase: Math.random() * Math.PI * 2 };
 }
 
-export default function Kuka({ me, pair, names }) {
-  const reportResult = useGameStore((s) => s.reportResult);
-  const reportedRef = useRef(false);
+export default function Kuka({ onGameOver }) {
   const canvasRef = useRef(null);
   const roaches = useRef([]);
   const splats = useRef([]);
   const killsRef = useRef(0);
   const mouse = useRef({ x: W / 2, y: H / 2, flash: 0 });
-
+  const endedRef = useRef(false);
   const [kills, setKills] = useState(0);
-  const [oppKills, setOppKills] = useState(0);
   const [timeLeft, setTimeLeft] = useState(60);
-  const [done, setDone] = useState(false);
-  const [over, setOver] = useState(null);
-
-  const meIdx = pair.indexOf(me);
-  const oppIdx = meIdx === 0 ? 1 : 0;
-  const finals = useRef({ me: null, opp: null });
-
-  const tryResolve = () => {
-    const f = finals.current;
-    if (f.me == null || f.opp == null || reportedRef.current) return;
-    reportedRef.current = true;
-    const winIdx = f.me >= f.opp ? meIdx : oppIdx; // tie → me (host de-dupes)
-    setOver(pair[winIdx]);
-    reportResult(pair[winIdx]);
-  };
+  const [over, setOver] = useState(false);
 
   useEffect(() => {
-    const off = onRealtime((data, from) => {
-      if (from !== pair[oppIdx] || data.t !== 'k') return;
-      setOppKills(data.kills);
-      if (data.done) { finals.current.opp = data.kills; tryResolve(); }
-    });
-    return off;
-  }, [pair, oppIdx]);
-
-  useEffect(() => {
-    if (meIdx === -1) return; // spectator: no play
     roaches.current = Array.from({ length: MAX_ROACHES }, spawnRoach);
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const start = performance.now();
-    let raf, lastSend = 0;
-
+    const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
+    const start = performance.now(); let raf;
     const onMove = (e) => { const r = canvas.getBoundingClientRect(); mouse.current.x = (e.clientX - r.left) * (W / r.width); mouse.current.y = (e.clientY - r.top) * (H / r.height); };
     const onShoot = () => {
-      if (finals.current.me != null) return;
+      if (endedRef.current) return;
       mouse.current.flash = 6; const { x, y } = mouse.current;
       let best = -1, bestD = Infinity;
       roaches.current.forEach((rch, i) => { const d = Math.hypot(rch.x - x, rch.y - y); if (d < rch.size + 6 && d < bestD) { bestD = d; best = i; } });
       if (best >= 0) { splats.current.push({ x: roaches.current[best].x, y: roaches.current[best].y, t: 1 }); roaches.current[best] = spawnRoach(); killsRef.current++; setKills(killsRef.current); }
     };
-    canvas.addEventListener('mousemove', onMove);
-    canvas.addEventListener('mousedown', onShoot);
+    canvas.addEventListener('mousemove', onMove); canvas.addEventListener('mousedown', onShoot);
 
     const drawRoach = (r) => {
       ctx.save(); ctx.translate(r.x, r.y); ctx.rotate(Math.atan2(r.vy, r.vx)); const wig = Math.sin(r.phase) * 2;
@@ -83,8 +45,7 @@ export default function Kuka({ me, pair, names }) {
     };
 
     const loop = (now) => {
-      const elapsed = now - start, left = Math.max(0, ROUND_MS - elapsed);
-      setTimeLeft(Math.ceil(left / 1000));
+      const left = Math.max(0, ROUND_MS - (now - start)); setTimeLeft(Math.ceil(left / 1000));
       const bg = ctx.createRadialGradient(W / 2, H / 2, 50, W / 2, H / 2, W * 0.7); bg.addColorStop(0, '#14110d'); bg.addColorStop(1, '#070605');
       ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
       splats.current = splats.current.filter((s) => s.t > 0);
@@ -100,42 +61,24 @@ export default function Kuka({ me, pair, names }) {
       if (m.flash > 0) { ctx.fillStyle = `rgba(255,220,120,${m.flash / 6 * 0.5})`; ctx.beginPath(); ctx.arc(m.x, m.y, 26, 0, 7); ctx.fill(); m.flash -= 1; }
       ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(m.x, m.y, 14, 0, 7); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(m.x - 20, m.y); ctx.lineTo(m.x - 6, m.y); ctx.moveTo(m.x + 6, m.y); ctx.lineTo(m.x + 20, m.y); ctx.moveTo(m.x, m.y - 20); ctx.lineTo(m.x, m.y - 6); ctx.moveTo(m.x, m.y + 6); ctx.lineTo(m.x, m.y + 20); ctx.stroke();
-
-      if (now - lastSend > 300) { lastSend = now; sendRealtime({ t: 'k', kills: killsRef.current, done: false }); }
-      if (left <= 0 && finals.current.me == null) {
-        finals.current.me = killsRef.current; setDone(true);
-        sendRealtime({ t: 'k', kills: killsRef.current, done: true });
-        tryResolve();
-      }
+      if (left <= 0 && !endedRef.current) { endedRef.current = true; setOver(true); setTimeout(() => onGameOver && onGameOver(killsRef.current), 500); return; }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => { cancelAnimationFrame(raf); canvas.removeEventListener('mousemove', onMove); canvas.removeEventListener('mousedown', onShoot); };
-  }, [meIdx, pair]);
+  }, [onGameOver]);
 
   return (
     <div className="flex flex-col items-center gap-3 select-none">
       <div className="flex items-center gap-6 pixel text-xs">
-        <span className="text-arcade-cyan">{names[pair[meIdx]] || 'Tú'}: {kills} 🪳</span>
+        <span className="text-arcade-cyan">{kills} 🪳</span>
         <span className="text-arcade-amber">⏱ {timeLeft}s</span>
-        <span className="text-slate-300">{names[pair[oppIdx]] || 'Rival'}: {oppKills} 🪳</span>
       </div>
       <div className="relative">
-        <canvas ref={canvasRef} width={W} height={H} className="rounded-xl border border-amber-900/40 max-w-full" style={{ cursor: meIdx !== -1 && !done ? 'none' : 'default', boxShadow: '0 0 24px rgba(120,60,20,0.25)' }} />
-        {done && !over && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 rounded-xl">
-            <div className="text-3xl">⏱</div><div className="text-sm text-slate-300">Tu tiempo acabó. Esperando al rival…</div>
-          </div>
-        )}
-        {over && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/75 rounded-xl">
-            <div className="text-4xl animate-flicker">🏆</div>
-            <div className="text-arcade-green text-sm">{over === pair[meIdx] ? '¡Ganaste la ronda!' : `Gana ${names[over]}`} ({kills} vs {oppKills})</div>
-          </div>
-        )}
-        {meIdx === -1 && <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-xl text-amber-400 text-sm">Mirando partida</div>}
+        <canvas ref={canvasRef} width={W} height={H} className="rounded-xl border border-amber-900/40 max-w-full" style={{ cursor: over ? 'default' : 'none', boxShadow: '0 0 24px rgba(120,60,20,0.25)' }} />
+        {over && <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/70 rounded-xl"><div className="text-3xl">🪳</div><div className="text-arcade-green text-sm">¡{kills} cucarachas aplastadas!</div></div>}
       </div>
-      <div className="text-xs text-slate-500">Apunta y <span className="text-arcade-cyan">click</span> para aplastar. ¡Más kukas que tu rival en 60s gana!</div>
+      <div className="text-xs text-slate-500">Apunta y <span className="text-arcade-cyan">click</span> — ¡más kukas en 60s gana la ronda!</div>
     </div>
   );
 }

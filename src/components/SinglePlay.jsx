@@ -11,15 +11,12 @@ import Kuka from '../games/Kuka';
 // Single-player / practice mode: pick any game and play it solo on one device,
 // no Nostr login or pot. Turn-based games run in "hotseat" (you control both
 // sides). reportResult/sendMove are no-ops here (the game store has no room).
-const PAIR = ['p1', 'p2'];
-const NAMES = { p1: 'Jugador 1', p2: 'Jugador 2' };
-
-function renderGame(id, round) {
-  const common = { me: 'p1', pair: PAIR, names: NAMES };
+function renderGame(id, round, onGameOver) {
+  const common = { onGameOver };
   const key = `${id}-${round}`;
   switch (id) {
-    case 'connect4': return <Connect4 key={key} {...common} hotseat />;
-    case 'tictactoe': return <TicTacToe key={key} {...common} hotseat />;
+    case 'connect4': return <Connect4 key={key} {...common} />;
+    case 'tictactoe': return <TicTacToe key={key} {...common} />;
     case 'pong': return <Pong key={key} {...common} />;
     case 'tron': return <Tron key={key} {...common} variant="tron" />;
     case 'snake': return <Tron key={key} {...common} variant="snake" />;
@@ -32,7 +29,11 @@ function renderGame(id, round) {
 export default function SinglePlay({ onExit }) {
   const [sel, setSel] = useState(null);
   const [round, setRound] = useState(0);
+  const [lastScore, setLastScore] = useState(null);
   const games = Object.values(GAMES);
+
+  const replay = () => { setLastScore(null); setRound((r) => r + 1); };
+  const onGameOver = (score) => setLastScore(score);
 
   if (sel) {
     const g = GAMES[sel];
@@ -42,16 +43,23 @@ export default function SinglePlay({ onExit }) {
           <button className="text-xs text-slate-400 hover:text-arcade-cyan" onClick={() => setSel(null)}>← Elegir otro juego</button>
           <div className="flex items-center gap-2">
             <span className="glass-chip text-arcade-purple">{g.emoji} {g.name}</span>
-            <button className="btn-ghost !py-1.5 !px-3 text-xs" onClick={() => setRound((r) => r + 1)}>↻ Reiniciar</button>
+            <button className="btn-ghost !py-1.5 !px-3 text-xs" onClick={replay}>↻ Reiniciar</button>
             <button className="btn-ghost !py-1.5 !px-3 text-xs" onClick={onExit}>Salir</button>
           </div>
         </div>
         <div className="glass-panel p-6 min-h-[440px] flex items-center justify-center arcade-grid">
-          {renderGame(sel, round)}
+          {renderGame(sel, round, onGameOver)}
         </div>
-        <p className="text-center text-xs text-slate-500 mt-3">
-          Modo práctica en solitario · sin bote ni login. Para jugar <b className="text-slate-300">online con un amigo a la vez</b>, entra a una sala con Nostr.
-        </p>
+        {lastScore != null ? (
+          <div className="text-center mt-3">
+            <span className="glass-chip text-arcade-green">🏁 Tu puntuación: {lastScore}</span>
+            <button className="btn-neon !py-1.5 !px-4 text-xs ml-2" onClick={replay}>Jugar otra ▶</button>
+          </div>
+        ) : (
+          <p className="text-center text-xs text-slate-500 mt-3">
+            Juegas <b className="text-slate-300">contra la máquina</b>. En una sala con Nostr, tu puntuación compite por el bote: el que más puntúa gana.
+          </p>
+        )}
       </div>
     );
   }

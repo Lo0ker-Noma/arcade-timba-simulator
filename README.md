@@ -21,31 +21,22 @@ Botón **Single game** en la cabecera / portada: prueba cualquier juego **solo, 
 
 ## 🕹️ Juegos
 
-| Juego | Modo | Jugadores |
-|-------|------|-----------|
-| 🔴 Conecta 4 | 🌐 Online por turnos | 2 |
-| ⭕ Tic Tac Toe | 🌐 Online por turnos | 2 |
-| 🏓 Pong | 🌐 Online tiempo real (host-autoritativo) | 2 |
-| 🐍 Snake Duel | 🌐 Online tiempo real (host-autoritativo) | 2 |
-| 🏍️ Tron | 🌐 Online tiempo real (host-autoritativo) | 2 |
-| 🧱 Tetris | 🌐 Online — duelo paralelo de 2 tableros | 2 |
-| 🪳 Kuka Exterminator | 🌐 Online — 60s simultáneos | 2 |
+**Modelo: cada jugador compite contra la máquina (IA); gana el bote quien hace más puntos / aguanta más.**
 
-**Todos los juegos son online y simultáneos.** Ver la sección de tiempo real abajo.
+| Juego | Reto vs máquina | Puntuación |
+|-------|-----------------|-----------|
+| 🔴 Conecta 4 | Vence a la IA | 1000 − jugadas (gana) · 500 empate |
+| ⭕ Tic Tac Toe | Vence a la IA (minimax) | 1000 − jugadas (gana) · 500 empate |
+| 🏓 Pong | Marca más goles a la IA en 45 s | tus goles |
+| 🐍 Snake / 🏍️ Tron | Aguanta más que la moto IA | seg. supervividos ×100 (+5000 si la vences) |
+| 🧱 Tetris | Score-attack hasta desbordarte | puntuación de Tetris |
+| 🪳 Kuka | Aplasta cucarachas en 60 s | nº de cucarachas |
 
-## ⚡ Tiempo real sobre Nostr (claves de sesión efímeras)
+## 🌐 Cómo es "online" sin sincronización física
 
-Firmar cada fotograma con la extensión NIP-07 es inviable. Solución (`src/lib/realtime.js`):
+En vez de sincronizar física entre jugadores (frágil sobre relays públicos), cada participante **juega su propia partida contra la máquina** y, al terminar, **firma y publica su puntuación** por Nostr (kind 2420). El host la recibe, y cuando **todos los participantes de la ronda han enviado su puntuación**, la **más alta gana la ronda**. Primero en llegar al objetivo de victorias se lleva el bote.
 
-1. Al empezar la partida, cada jugador genera una **clave de sesión efímera** en el navegador.
-2. Anuncia **una vez** la vinculación `pubkey real → pubkey de sesión` con un mensaje firmado por NIP-07 (así nadie puede suplantar).
-3. Todos los eventos de juego de alta frecuencia se firman **localmente** con la clave de sesión (schnorr ≈ 1 ms, sin extensión) y se publican en un **kind efímero (24420)** que los relays difunden pero no almacenan.
-
-**Netcode por juego:**
-- **Pong / Tron / Snake**: el `host` (jugador 1) simula la física y difunde el estado ~15 Hz; el `guest` envía solo sus inputs y predice su lado localmente.
-- **Tetris**: paralelo — cada uno corre su tablero y difunde un snapshot comprimido ~5 Hz; el primero que se desborda pierde.
-- **Kuka**: paralelo — ambos juegan sus 60 s a la vez y difunden su marcador; gana quien más mate.
-- **Conecta 4 / Tic Tac Toe**: por turnos, cada jugada firmada por Nostr (poca frecuencia, sin necesidad de claves de sesión).
+Ventajas: robusto (solo se firma una vez por ronda, no por fotograma), sin backend, y cada quien juega a su ritmo. En **Single game** juegas vs la IA sin bote.
 
 ## 🏦 El bote (escrow — Opción A)
 
