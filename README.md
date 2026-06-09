@@ -42,7 +42,8 @@ Ventajas: robusto (solo se firma una vez por ronda, no por fotograma), sin backe
 
 - **Niveles**: cada victoria sube el nivel — la IA es más dura, los juegos más rápidos, y **más dificultad da más puntos** (la puntuación se multiplica por el nivel).
 - **Marcador grande**: en Single game se ven NIVEL · ÚLTIMA PARTIDA · TOTAL acumulado.
-- **Salas de N jugadores**: todos compiten cada ronda; el de mayor puntuación gana la ronda. El **ranking en vivo** (🥇🥈🥉) ordena por puntos acumulados de todos los conectados, en tiempo real vía Nostr.
+- **Salas de N jugadores**: todos compiten cada ronda; el de mayor puntuación gana la ronda. El **ranking** (🥇🥈🥉) ordena por puntos acumulados de todos los conectados.
+- **Tabla EN VIVO durante la partida**: mientras todos juegan a la vez, cada juego emite su puntuación en progreso (~1/seg) por el canal efímero de claves de sesión, y la tabla se reordena en tiempo real conforme van sumando puntos (`LiveScores.jsx`).
 
 ## 🏦 El bote (escrow — Opción A)
 

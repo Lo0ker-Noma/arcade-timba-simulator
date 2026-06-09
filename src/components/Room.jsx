@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
 import { GAMES, totalPot } from '../lib/protocol';
 import Scoreboard from './Scoreboard';
 import GameBoard from './GameBoard';
+import LiveScores from './LiveScores';
 import FundingModal from './FundingModal';
 import PayoutPanel from './PayoutPanel';
 
@@ -13,8 +14,20 @@ export default function Room() {
   const startMatch = useGameStore((s) => s.startMatch);
   const setGame = useGameStore((s) => s.setGame);
   const leaveRoom = useGameStore((s) => s.leaveRoom);
+  const beginRealtime = useGameStore((s) => s.beginRealtime);
+  const endRealtime = useGameStore((s) => s.endRealtime);
+  const resetLive = useGameStore((s) => s.resetLive);
   const pubkey = useAuthStore((s) => s.pubkey);
   const [showFund, setShowFund] = useState(false);
+
+  const status = room?.status;
+  const round = room?.round;
+  // Open the realtime channel while the match is underway (for live scores).
+  useEffect(() => {
+    if (status === 'playing') { beginRealtime(); return () => endRealtime(); }
+  }, [status, beginRealtime, endRealtime]);
+  // Clear the live table each new round.
+  useEffect(() => { resetLive(); }, [round, resetLive]);
 
   if (!room) return null;
   const me = room.players.find((p) => p.pubkey === pubkey);
@@ -94,7 +107,7 @@ export default function Room() {
             <PayoutPanel room={room} isHost={isHost} />
           ) : room.status === 'playing' ? (
             <div className="w-full">
-              <div className="text-center mb-4">
+              <div className="text-center mb-3">
                 <span className="chip text-arcade-purple">{game?.emoji} {game?.name}</span>
                 <span className="ml-2 text-[11px] text-slate-400">ronda {room.round} · juegas vs la máquina</span>
                 {room.lastRoundScores && (
@@ -103,6 +116,7 @@ export default function Room() {
                   </div>
                 )}
               </div>
+              <LiveScores room={room} me={pubkey} />
               <GameBoard key={room.round} room={room} />
             </div>
           ) : (

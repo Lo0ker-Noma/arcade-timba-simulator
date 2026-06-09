@@ -4,10 +4,11 @@ import React, { useEffect, useRef, useState } from 'react';
 // Each player plays their own match vs the AI; more goals wins the round.
 const W = 640, H = 360, PADDLE_H = 70, PADDLE_W = 10, BALL = 9, MATCH_MS = 45000;
 
-export default function Pong({ onGameOver, level = 1 }) {
+export default function Pong({ onGameOver, onProgress, level = 1 }) {
   const canvasRef = useRef(null);
   const keys = useRef({});
   const endedRef = useRef(false);
+  const lastProg = useRef(0);
   const [score, setScore] = useState([0, 0]);
   const [timeLeft, setTimeLeft] = useState(45);
   const ballSpeed = 4.2 + (level - 1) * 0.7;
@@ -56,6 +57,7 @@ export default function Pong({ onGameOver, level = 1 }) {
       ctx.fillStyle = '#f59e0b'; ctx.fillRect(W - PADDLE_W, s.ry - PADDLE_H / 2, PADDLE_W, PADDLE_H);
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.bx, s.by, BALL, 0, Math.PI * 2); ctx.fill();
 
+      if (onProgress && now - lastProg.current > 800) { lastProg.current = now; onProgress(s.s[0] * level); }
       if (left <= 0 && !endedRef.current) { endedRef.current = true; const won = s.s[0] >= s.s[1]; setTimeout(() => onGameOver && onGameOver(s.s[0] * level, won), 400); return; }
       raf = requestAnimationFrame(loop);
     };

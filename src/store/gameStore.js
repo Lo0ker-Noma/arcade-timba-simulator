@@ -5,7 +5,7 @@ import {
   buildRoomEvent, buildMsgEvent, parseContent,
 } from '../lib/protocol';
 import { useAuthStore } from './authStore';
-import { startRealtime, stopRealtime, bindSession } from '../lib/realtime';
+import { startRealtime, stopRealtime, bindSession, onRealtime, sendRealtime } from '../lib/realtime';
 
 const DEV = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
 
@@ -37,6 +37,10 @@ export const useGameStore = create((set, get) => ({
   roomUnsub: null,
   isHost: false,
   funding: { state: 'idle', invoice: null, error: null }, // idle|requesting|invoice|paid|error
+
+  // Live in-progress scores broadcast during a round: { pubkey: score }.
+  liveScores: {},
+  _liveOff: null,
 
   // Single-player / practice mode (no Nostr, no pot) — for testing all games.
   soloMode: false,
@@ -316,15 +320,35 @@ export const useGameStore = create((set, get) => ({
     await signAndPublish(buildMsgEvent(r.id, { v: 1, type: 'move', game: r.currentGame, data }));
   },
 
-  // ---- Realtime (ephemeral session-key) channel for action games ----
+  // ---- Realtime (ephemeral session-key) channel for live in-progress scores ----
   beginRealtime: async () => {
     const r = get().room;
     if (!r) return;
     await startRealtime(r.id, async (m) => {
       await signAndPublish(buildMsgEvent(r.id, { v: 1, ...m }));
     });
+    // Collect other players' live (in-progress) scores.
+    const off = onRealtime((data, from) => {
+      if (data.t !== 'live') return;
+      set((s) => ({ liveScores: { ...s.liveScores, [from]: Number(data.score) || 0 } }));
+    });
+    set({ _liveOff: off, liveScores: {} });
   },
-  endRealtime: () => stopRealtime(),
+  endRealtime: () => {
+    const off = get()._liveOff;
+    if (off) off();
+    stopRealtime();
+    set({ liveScores: {}, _liveOff: null });
+  },
+  // Broadcast my in-progress score (signed locally with the session key) and
+  // reflect it in my own live table immediately.
+  sendLive: (score) => {
+    const auth = useAuthStore.getState();
+    const s = Math.round(Number(score) || 0);
+    if (auth.pubkey) set((st) => ({ liveScores: { ...st.liveScores, [auth.pubkey]: s } }));
+    sendRealtime({ t: 'live', score: s });
+  },
+  resetLive: () => set({ liveScores: {} }),
 
   // Report a finished round's winner to the host.
   reportResult: async (winnerPubkey) => {

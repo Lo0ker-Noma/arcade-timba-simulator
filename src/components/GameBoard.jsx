@@ -11,13 +11,15 @@ import Kuka from '../games/Kuka';
 // score; the host awards the round to the higher score.
 export default function GameBoard({ room }) {
   const submitScore = useGameStore((s) => s.submitScore);
+  const sendLive = useGameStore((s) => s.sendLive);
   const [submitted, setSubmitted] = useState(false);
 
-  const onGameOver = (score) => { setSubmitted(true); submitScore(score); };
+  const onGameOver = (score) => { setSubmitted(true); sendLive(score); submitScore(score); };
   const key = `${room.currentGame}-${room.round}`;
   // Everyone plays the same difficulty each round (= round number), so it's fair.
   const level = room.round || 1;
-  const common = { onGameOver, level };
+  // onProgress streams the in-progress score to the live table.
+  const common = { onGameOver, level, onProgress: sendLive };
 
   let game = null;
   switch (room.currentGame) {

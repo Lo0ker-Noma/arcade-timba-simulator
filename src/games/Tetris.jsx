@@ -26,10 +26,11 @@ function merge(s) {
   s.piece = np;
 }
 
-export default function Tetris({ onGameOver, level = 1 }) {
+export default function Tetris({ onGameOver, onProgress, level = 1 }) {
   const canvasRef = useRef(null);
   const game = useRef(newGame(level - 1));
   const endedRef = useRef(false);
+  const lastProg = useRef(0);
   const [over, setOver] = useState(false);
   const [score, setScore] = useState(0);
 
@@ -64,6 +65,7 @@ export default function Tetris({ onGameOver, level = 1 }) {
       ctx.fillStyle = '#22d3ee'; ctx.fillText('LINES', px, 156); ctx.fillStyle = '#e2e8f0'; ctx.fillText(String(s.lines), px, 174);
       ctx.fillStyle = '#22d3ee'; ctx.fillText('LEVEL', px, 202); ctx.fillStyle = '#e2e8f0'; ctx.fillText(String(s.level), px, 220);
       setScore(s.score);
+      if (onProgress && t - lastProg.current > 800) { lastProg.current = t; onProgress(s.score); }
       if (s.dead && !endedRef.current) { endedRef.current = true; setOver(true); setTimeout(() => onGameOver && onGameOver(s.score, s.lines > 0), 600); }
       if (!s.dead) raf = requestAnimationFrame(loop); else raf = requestAnimationFrame(loop);
     };

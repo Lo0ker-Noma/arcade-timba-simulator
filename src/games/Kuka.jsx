@@ -10,7 +10,7 @@ function spawnRoach(spd = 2.2) {
   return { x: edge ? Math.random() * W : (Math.random() < 0.5 ? -20 : W + 20), y: edge ? (Math.random() < 0.5 ? -20 : H + 20) : Math.random() * H, vx: (Math.random() * 2 - 1) * spd, vy: (Math.random() * 2 - 1) * spd, size: 13 + Math.random() * 7, phase: Math.random() * Math.PI * 2 };
 }
 
-export default function Kuka({ onGameOver, level = 1 }) {
+export default function Kuka({ onGameOver, onProgress, level = 1 }) {
   const roachCount = 6 + (level - 1);
   const roachSpeed = 2.2 + (level - 1) * 0.4;
   const canvasRef = useRef(null);
@@ -26,7 +26,7 @@ export default function Kuka({ onGameOver, level = 1 }) {
   useEffect(() => {
     roaches.current = Array.from({ length: roachCount }, () => spawnRoach(roachSpeed));
     const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
-    const start = performance.now(); let raf;
+    const start = performance.now(); let raf, lastProg = 0;
     const onMove = (e) => { const r = canvas.getBoundingClientRect(); mouse.current.x = (e.clientX - r.left) * (W / r.width); mouse.current.y = (e.clientY - r.top) * (H / r.height); };
     const onShoot = () => {
       if (endedRef.current) return;
@@ -63,6 +63,7 @@ export default function Kuka({ onGameOver, level = 1 }) {
       if (m.flash > 0) { ctx.fillStyle = `rgba(255,220,120,${m.flash / 6 * 0.5})`; ctx.beginPath(); ctx.arc(m.x, m.y, 26, 0, 7); ctx.fill(); m.flash -= 1; }
       ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(m.x, m.y, 14, 0, 7); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(m.x - 20, m.y); ctx.lineTo(m.x - 6, m.y); ctx.moveTo(m.x + 6, m.y); ctx.lineTo(m.x + 20, m.y); ctx.moveTo(m.x, m.y - 20); ctx.lineTo(m.x, m.y - 6); ctx.moveTo(m.x, m.y + 6); ctx.lineTo(m.x, m.y + 20); ctx.stroke();
+      if (onProgress && now - lastProg > 800) { lastProg = now; onProgress(killsRef.current * level); }
       if (left <= 0 && !endedRef.current) { endedRef.current = true; setOver(true); setTimeout(() => onGameOver && onGameOver(killsRef.current * level, killsRef.current > 0), 500); return; }
       raf = requestAnimationFrame(loop);
     };

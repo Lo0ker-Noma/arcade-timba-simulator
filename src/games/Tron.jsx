@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 // seconds survived ×100, +5000 bonus if you outlast the machine.
 const CELL = 12, COLS = 48, ROWS = 30;
 
-export default function Tron({ onGameOver, variant = 'tron', level = 1 }) {
+export default function Tron({ onGameOver, onProgress, variant = 'tron', level = 1 }) {
   const canvasRef = useRef(null);
   const endedRef = useRef(false);
   const [result, setResult] = useState(null); // 'win' | 'lose'
@@ -55,8 +55,11 @@ export default function Tron({ onGameOver, variant = 'tron', level = 1 }) {
       setTimeout(() => onGameOver && onGameOver(score, won), 500);
     };
 
+    let lastProg = 0;
     const interval = setInterval(() => {
       if (!alive) return;
+      const nowt = performance.now();
+      if (onProgress && nowt - lastProg > 800) { lastProg = nowt; onProgress(Math.round(((nowt - start) / 1000) * 100 * level)); }
       aiDir = aiChoose();
       const nMe = [me[0] + dirRef.current[0], me[1] + dirRef.current[1]];
       const nAi = [ai[0] + aiDir[0], ai[1] + aiDir[1]];
