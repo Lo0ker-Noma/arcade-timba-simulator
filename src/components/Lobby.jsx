@@ -27,9 +27,11 @@ export default function Lobby() {
     .sort((a, b) => b.createdAt - a.createdAt);
 
   const doJoin = async (id) => {
+    const target = rooms[id];
+    const isFree = target && target.potMode === 'free';
     const addr = lnAddr.trim().toLowerCase();
-    if (!isValidLightningAddress(addr)) { alert('Pon tu Lightning Address (ej. tu@walletofsatoshi.com) para poder cobrar el bote.'); return; }
-    await joinRoom(id, addr);
+    if (!isFree && !isValidLightningAddress(addr)) { alert('Pon tu Lightning Address (ej. tu@walletofsatoshi.com) para poder cobrar el bote.'); return; }
+    await joinRoom(id, isFree ? '' : addr);
   };
 
   return (
@@ -78,13 +80,15 @@ export default function Lobby() {
                 </div>
                 <h3 className="font-bold truncate">{r.name}</h3>
                 <div className="text-xs text-slate-500 mb-3">
-                  {g?.name} · {r.players.length} jugador(es) · {r.potMode === 'rey' ? '👑 Rey de la pista' : '🪙 Timba'}
+                  {g?.name} · {r.players.length} jugador(es) · {r.potMode === 'free' ? '🎮 Sin timba' : r.potMode === 'rey' ? '👑 Rey de la pista' : '🪙 Timba'}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="pixel text-arcade-green text-xs">
-                    {r.potMode === 'rey'
-                      ? `${(r.finalPot || 0).toLocaleString()} sats`
-                      : `${(r.potPerPlayer || 0).toLocaleString()} sats c/u`}
+                    {r.potMode === 'free'
+                      ? '🎮 gratis'
+                      : r.potMode === 'rey'
+                        ? `${(r.finalPot || 0).toLocaleString()} sats`
+                        : `${(r.potPerPlayer || 0).toLocaleString()} sats c/u`}
                   </span>
                   <button className="btn-neon !py-2 !px-3 text-xs" onClick={() => doJoin(r.id)}>Unirme</button>
                 </div>
@@ -109,12 +113,13 @@ function CreateModal({ onClose, createRoom, defaultLn, detectedLn }) {
   const [ln, setLn] = useState(defaultLn || '');
   const [busy, setBusy] = useState(false);
 
+  const isFree = potMode === 'free';
   const submit = async () => {
-    if (!isValidLightningAddress(ln)) { alert('Necesitas una Lightning Address válida (será el escrow del bote).'); return; }
+    if (!isFree && !isValidLightningAddress(ln)) { alert('Necesitas una Lightning Address válida (será el escrow del bote).'); return; }
     setBusy(true);
     await createRoom({
-      name: name || 'Timba arcade', game, winTarget: Number(target),
-      hostLnAddress: ln.trim().toLowerCase(),
+      name: name || 'Sala arcade', game, winTarget: Number(target),
+      hostLnAddress: isFree ? '' : ln.trim().toLowerCase(),
       potMode,
       potPerPlayer: potMode === 'timba' ? Number(pot) : 0,
       finalPot: potMode === 'rey' ? Number(finalPot) : 0,
@@ -144,27 +149,30 @@ function CreateModal({ onClose, createRoom, defaultLn, detectedLn }) {
             </div>
             <div className="flex items-center justify-between mt-2 mb-1">
               <span className="text-xs font-semibold text-arcade-cyan">{GAMES[game].emoji} {GAMES[game].name}</span>
-              <span className="text-[10px] text-slate-500">
-                {GAMES[game].online ? '🌐 online por turnos' : '🕹️ local (mismo dispositivo)'}
-              </span>
+              <span className="text-[10px] text-slate-500">🌐 online · vs máquina</span>
             </div>
             <GamePreview game={game} />
           </div>
           <div>
-            <label className="text-xs text-slate-400">Modalidad del bote</label>
-            <div className="grid grid-cols-2 gap-2 mt-1">
+            <label className="text-xs text-slate-400">Modalidad</label>
+            <div className="grid grid-cols-3 gap-2 mt-1">
               {Object.values(POT_MODES).map((m) => (
                 <button key={m.id} type="button" onClick={() => setPotMode(m.id)}
                   className={`p-2 rounded-lg text-left ${potMode === m.id ? 'bg-arcade-cyan/15 border border-arcade-cyan/40' : 'btn-ghost !p-2'}`}>
-                  <div className="text-sm font-semibold">{m.emoji} {m.name}</div>
-                  <div className="text-[10px] text-slate-400 leading-tight mt-0.5">{m.desc}</div>
+                  <div className="text-xs font-semibold">{m.emoji} {m.name}</div>
+                  <div className="text-[9px] text-slate-400 leading-tight mt-0.5">{m.desc}</div>
                 </button>
               ))}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              {potMode === 'timba' ? (
+              {isFree ? (
+                <>
+                  <label className="text-xs text-slate-400">Sin bote</label>
+                  <div className="mt-1 px-3 py-2 rounded-lg text-sm text-arcade-cyan" style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.25)' }}>🎮 Gratis</div>
+                </>
+              ) : potMode === 'timba' ? (
                 <>
                   <label className="text-xs text-slate-400">Bote por jugador (sats)</label>
                   <input type="number" min={0} className="w-full mt-1" value={pot} onChange={(e) => setPot(e.target.value)} />
@@ -184,24 +192,28 @@ function CreateModal({ onClose, createRoom, defaultLn, detectedLn }) {
             </div>
           </div>
           <div className="text-[10px] text-slate-500 -mt-2">
-            {potMode === 'timba'
-              ? '🪙 Cada jugador paga su parte; el bote es la suma de todos.'
-              : '👑 Tú (admin) pones el bote final. Los jugadores compiten gratis y el ganador se lo lleva.'}
+            {isFree
+              ? '🎮 Sin dinero: jugáis online por la gloria y el ranking. No hace falta Lightning.'
+              : potMode === 'timba'
+                ? '🪙 Cada jugador paga su parte; el bote es la suma de todos. El pago se confirma solo.'
+                : '👑 Tú (admin) pones el bote final. Los jugadores compiten gratis y el ganador se lo lleva.'}
           </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="text-xs text-slate-400">Tu Lightning Address (escrow del bote)</label>
-              {detectedLn && ln !== detectedLn && (
-                <button type="button" className="text-[10px] text-arcade-green hover:underline" onClick={() => setLn(detectedLn)}>
-                  ⚡ usar la de mi perfil
-                </button>
-              )}
+          {!isFree && (
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-slate-400">Tu Lightning Address (escrow del bote)</label>
+                {detectedLn && ln !== detectedLn && (
+                  <button type="button" className="text-[10px] text-arcade-green hover:underline" onClick={() => setLn(detectedLn)}>
+                    ⚡ usar la de mi perfil
+                  </button>
+                )}
+              </div>
+              <input className="w-full mt-1" value={ln} onChange={(e) => setLn(e.target.value)} placeholder="tu@walletofsatoshi.com" />
+              {detectedLn && ln === detectedLn
+                ? <div className="text-[10px] text-arcade-green mt-1">⚡ detectada de tu perfil Nostr · puedes cambiarla</div>
+                : <div className="text-[10px] text-slate-500 mt-1">Puedes escribir otra dirección manualmente.</div>}
             </div>
-            <input className="w-full mt-1" value={ln} onChange={(e) => setLn(e.target.value)} placeholder="tu@walletofsatoshi.com" />
-            {detectedLn && ln === detectedLn
-              ? <div className="text-[10px] text-arcade-green mt-1">⚡ detectada de tu perfil Nostr · puedes cambiarla</div>
-              : <div className="text-[10px] text-slate-500 mt-1">Puedes escribir otra dirección manualmente.</div>}
-          </div>
+          )}
           <button className="btn-neon w-full" disabled={busy} onClick={submit}>
             {busy ? 'Creando…' : 'Crear y entrar'}
           </button>

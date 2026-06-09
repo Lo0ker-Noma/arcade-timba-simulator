@@ -56,7 +56,30 @@ export async function requestInvoice(address, sats, comment = '') {
   if (typeof data.pr !== 'string' || !/^ln[a-z0-9]+$/i.test(data.pr)) {
     throw new Error('Factura BOLT11 inválida');
   }
-  return data.pr; // bolt11 invoice string
+  // LUD-21 verify URL lets us poll for settlement automatically (no buttons).
+  let verify = null;
+  if (typeof data.verify === 'string') {
+    try { const u = new URL(data.verify); if (u.protocol === 'https:') verify = u.href; } catch {}
+  }
+  return { invoice: data.pr, verify };
+}
+
+// Poll a LUD-21 verify URL until the invoice is settled (auto-confirmation).
+// Resolves true when paid, false on timeout. Returns false if no verify URL.
+export async function pollPaid(verifyUrl, { interval = 2500, timeout = 600000 } = {}) {
+  if (!verifyUrl) return false;
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    try {
+      const res = await fetch(verifyUrl, { headers: { Accept: 'application/json' } });
+      if (res.ok) {
+        const d = await res.json();
+        if (d && (d.settled === true || d.paid === true)) return true;
+      }
+    } catch { /* keep polling */ }
+    await new Promise((r) => setTimeout(r, interval));
+  }
+  return false;
 }
 
 // Detect WebLN (Alby / native browser Lightning).
@@ -74,7 +97,7 @@ export async function payWithWebLN(bolt11) {
 
 // Full convenience flow: resolve address -> invoice -> pay via WebLN.
 export async function payAddress(address, sats, comment = '') {
-  const invoice = await requestInvoice(address, sats, comment);
+  const { invoice } = await requestInvoice(address, sats, comment);
   if (hasWebLN()) {
     const res = await payWithWebLN(invoice);
     return { paid: true, invoice, preimage: res?.preimage || null };

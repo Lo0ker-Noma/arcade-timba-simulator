@@ -88,8 +88,8 @@ export const useGameStore = create((set, get) => ({
       v: 1, type: 'room', id,
       name: String(name || 'Sala arcade').slice(0, 60),
       host: auth.pubkey,
-      hostLnAddress: String(hostLnAddress).trim().toLowerCase(),
-      potMode: potMode === 'rey' ? 'rey' : 'timba',
+      hostLnAddress: String(hostLnAddress || '').trim().toLowerCase(),
+      potMode: ['free', 'rey', 'timba'].includes(potMode) ? potMode : 'timba',
       potPerPlayer: Math.max(0, Math.floor(potPerPlayer || 0)),
       finalPot: Math.max(0, Math.floor(finalPot || 0)),
       winTarget: Math.floor(winTarget),
@@ -98,9 +98,9 @@ export const useGameStore = create((set, get) => ({
       players: [{
         pubkey: auth.pubkey,
         name: profile.name || 'Host',
-        lnAddress: String(hostLnAddress).trim().toLowerCase(),
-        // In "rey" mode the host is the bankroll: counts as funded from the start.
-        funded: potMode === 'rey',
+        lnAddress: String(hostLnAddress || '').trim().toLowerCase(),
+        // No payment needed in "free"; host is the bankroll in "rey".
+        funded: potMode === 'rey' || potMode === 'free',
       }],
       scores: { [auth.pubkey]: 0 },
       round: 0,
@@ -195,8 +195,8 @@ export const useGameStore = create((set, get) => ({
               pubkey: fromPubkey,
               name: String(msg.name || `${fromPubkey.slice(0, 8)}…`).slice(0, 40),
               lnAddress: String(msg.lnAddress || '').trim().toLowerCase(),
-              // "rey" mode: players compete for free, so no funding required.
-              funded: r.potMode === 'rey',
+              // No payment needed in "free"/"rey": players compete without funding.
+              funded: r.potMode === 'rey' || r.potMode === 'free',
             });
             r.scores[fromPubkey] = 0;
           }

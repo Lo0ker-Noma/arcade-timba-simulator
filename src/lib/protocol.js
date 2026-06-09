@@ -35,6 +35,7 @@ export const WIN_TARGETS = [1, 3, 5, 7, 10, 12];
 //  - rey:   an admin (host) puts up the whole final pot; players compete free
 //           and the winner takes the admin's pot ("Rey de la pista").
 export const POT_MODES = {
+  free: { id: 'free', name: 'Sin timba', emoji: '🎮', desc: 'Juega online gratis, solo por la gloria y el ranking.' },
   timba: { id: 'timba', name: 'Timba', emoji: '🪙', desc: 'Cada jugador aporta los mismos sats al bote.' },
   rey: { id: 'rey', name: 'Rey de la pista', emoji: '👑', desc: 'El admin pone el bote final; los demás juegan gratis.' },
 };
@@ -42,6 +43,7 @@ export const POT_MODES = {
 // Total pot in sats for a room, regardless of mode.
 export function totalPot(room) {
   if (!room) return 0;
+  if (room.potMode === 'free') return 0;
   if (room.potMode === 'rey') return Math.max(0, Math.floor(room.finalPot || 0));
   const funded = (room.players || []).filter((p) => p.funded).length;
   return Math.max(0, Math.floor(room.potPerPlayer || 0)) * funded;

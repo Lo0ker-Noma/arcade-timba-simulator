@@ -5,6 +5,7 @@ const MEDAL = ['🥇', '🥈', '🥉'];
 
 export default function Scoreboard({ room }) {
   const isRey = room.potMode === 'rey';
+  const isFree = room.potMode === 'free';
   const totalPot = computePot(room);
   const points = room.points || {};
   const playing = room.status !== 'lobby';
@@ -36,9 +37,11 @@ export default function Scoreboard({ room }) {
                 </div>
                 <div className="text-[10px] text-slate-500 flex items-center gap-2">
                   <span className="text-arcade-amber">{wins} 🏅</span>
-                  {!playing && (isRey
-                    ? (p.pubkey === room.host ? <span className="text-arcade-amber">👑 admin</span> : <span className="text-slate-400">compite</span>)
-                    : (p.funded ? <span className="text-arcade-green">⚡ pagó</span> : <span className="text-slate-600">sin pagar</span>))}
+                  {!playing && (isFree
+                    ? <span className="text-arcade-cyan">🎮 listo</span>
+                    : isRey
+                      ? (p.pubkey === room.host ? <span className="text-arcade-amber">👑 admin</span> : <span className="text-slate-400">compite</span>)
+                      : (p.funded ? <span className="text-arcade-green">⚡ pagó</span> : <span className="text-slate-600">sin pagar</span>))}
                 </div>
               </div>
               {playing && (
@@ -52,8 +55,8 @@ export default function Scoreboard({ room }) {
         })}
       </div>
       <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
-        <span className="text-xs text-slate-400">{isRey ? 'BOTE DEL ADMIN 👑' : 'BOTE'}</span>
-        <span className="pixel text-arcade-green text-sm">{totalPot.toLocaleString()} sats</span>
+        <span className="text-xs text-slate-400">{isFree ? 'MODO' : isRey ? 'BOTE DEL ADMIN 👑' : 'BOTE'}</span>
+        <span className="pixel text-arcade-green text-sm">{isFree ? '🎮 sin timba' : `${totalPot.toLocaleString()} sats`}</span>
       </div>
     </div>
   );
