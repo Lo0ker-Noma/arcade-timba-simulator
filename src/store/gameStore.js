@@ -177,6 +177,26 @@ export const useGameStore = create((set, get) => ({
     set({ room: null, roomUnsub: null, isHost: false, funding: { state: 'idle', invoice: null, error: null } });
   },
 
+  // ---- Host closes/cancels a room ----
+  // Marks the (replaceable) room doc as 'closed' so it drops out of the lobby.
+  // Works from inside the room or from the lobby list (by id).
+  closeRoomById: async (roomId) => {
+    const auth = useAuthStore.getState();
+    const cur = get().room && get().room.id === roomId ? get().room : get().rooms[roomId];
+    if (!cur || cur.host !== auth.pubkey) return false;
+    const next = structuredClone(cur);
+    delete next._ts;
+    next.status = 'closed';
+    const signed = await signAndPublish(buildRoomEvent(next));
+    if (!signed) return false;
+    // reflect locally
+    set((s) => ({
+      rooms: { ...s.rooms, [roomId]: { ...next, _ts: signed.created_at } },
+      room: s.room && s.room.id === roomId ? { ...next, _ts: signed.created_at } : s.room,
+    }));
+    return true;
+  },
+
   // ---- Message handling ----
   _handleMsg: (msg, fromPubkey) => {
     const isHost = get().isHost;

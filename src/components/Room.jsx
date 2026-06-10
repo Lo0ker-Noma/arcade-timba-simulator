@@ -7,6 +7,7 @@ import GameBoard from './GameBoard';
 import LiveScores from './LiveScores';
 import FundingModal from './FundingModal';
 import PayoutPanel from './PayoutPanel';
+import CloseRoomModal from './CloseRoomModal';
 
 export default function Room() {
   const room = useGameStore((s) => s.room);
@@ -19,6 +20,7 @@ export default function Room() {
   const resetLive = useGameStore((s) => s.resetLive);
   const pubkey = useAuthStore((s) => s.pubkey);
   const [showFund, setShowFund] = useState(false);
+  const [showClose, setShowClose] = useState(false);
 
   const status = room?.status;
   const round = room?.round;
@@ -40,7 +42,12 @@ export default function Room() {
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <button className="text-xs text-slate-500 hover:text-arcade-cyan" onClick={leaveRoom}>← Salir de la sala</button>
+          <div className="flex items-center gap-3">
+            <button className="text-xs text-slate-500 hover:text-arcade-cyan" onClick={leaveRoom}>← Salir de la sala</button>
+            {isHost && room.status !== 'finished' && (
+              <button className="text-xs text-red-400 hover:text-red-300" onClick={() => setShowClose(true)}>✕ Cerrar sala</button>
+            )}
+          </div>
           <h1 className="text-xl font-bold mt-1">{room.name}</h1>
           <div className="text-xs text-slate-500 font-mono">
             sala {room.id.slice(0, 8)} · {isFree
@@ -136,6 +143,7 @@ export default function Room() {
       </div>
 
       {showFund && <FundingModal room={room} onClose={() => setShowFund(false)} />}
+      {showClose && <CloseRoomModal room={room} onClose={() => setShowClose(false)} onDone={() => {}} />}
     </div>
   );
 }

@@ -38,6 +38,14 @@ En vez de sincronizar física entre jugadores (frágil sobre relays públicos), 
 
 Ventajas: robusto (solo se firma una vez por ronda, no por fotograma), sin backend, y cada quien juega a su ritmo. En **Single game** juegas vs la IA sin bote.
 
+### Cerrar sala y reembolsos automáticos
+
+El host puede **cerrar sus salas** (botón en la sala y en cada tarjeta del lobby que haya creado). Al cerrar una sala de **Timba** que aún no empezó, se **reembolsan automáticamente** los sats a cada jugador que ya pagó (a su Lightning Address, vía WebLN o polling LUD-21) — excepto al propio host, que es quien custodia el escrow. Así, si alguien no se une, nadie pierde su dinero.
+
+### Pagos sin botones
+
+Los pagos del bote y del premio se confirman **automáticamente**: con WebLN por el preimage; sin WebLN, haciendo polling de la URL de verificación LUD-21 hasta que el pago liquida.
+
 ### Dificultad progresiva y ranking
 
 - **Niveles**: cada victoria sube el nivel — la IA es más dura, los juegos más rápidos, y **más dificultad da más puntos** (la puntuación se multiplica por el nivel).

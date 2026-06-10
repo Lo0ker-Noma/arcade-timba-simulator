@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { GAMES, WIN_TARGETS, POT_MODES } from '../lib/protocol';
 import { isValidLightningAddress } from '../lib/lightning';
 import GamePreview from './GamePreview';
+import CloseRoomModal from './CloseRoomModal';
 
 export default function Lobby() {
   const { rooms, startLobby, stopLobby, createRoom, joinRoom } = useGameStore();
@@ -13,6 +14,7 @@ export default function Lobby() {
   const [joinCode, setJoinCode] = useState('');
   const [lnAddr, setLnAddr] = useState('');
   const [lnTouched, setLnTouched] = useState(false);
+  const [closingRoom, setClosingRoom] = useState(null);
 
   useEffect(() => { startLobby(); return () => stopLobby(); }, []);
 
@@ -90,7 +92,12 @@ export default function Lobby() {
                         ? `${(r.finalPot || 0).toLocaleString()} sats`
                         : `${(r.potPerPlayer || 0).toLocaleString()} sats c/u`}
                   </span>
-                  <button className="btn-neon !py-2 !px-3 text-xs" onClick={() => doJoin(r.id)}>Unirme</button>
+                  <div className="flex items-center gap-2">
+                    {r.host === pubkey && (
+                      <button className="text-xs text-red-400 hover:text-red-300" onClick={() => setClosingRoom(r)}>✕ Cerrar</button>
+                    )}
+                    <button className="btn-neon !py-2 !px-3 text-xs" onClick={() => doJoin(r.id)}>{r.host === pubkey ? 'Entrar' : 'Unirme'}</button>
+                  </div>
                 </div>
               </div>
             );
@@ -99,6 +106,7 @@ export default function Lobby() {
       )}
 
       {showCreate && <CreateModal onClose={() => setShowCreate(false)} createRoom={createRoom} defaultLn={lnAddr || detectedLn} detectedLn={detectedLn} />}
+      {closingRoom && <CloseRoomModal room={closingRoom} onClose={() => setClosingRoom(null)} onDone={() => {}} />}
     </div>
   );
 }
