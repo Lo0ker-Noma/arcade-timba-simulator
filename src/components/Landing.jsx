@@ -42,7 +42,7 @@ export default function Landing({ onSolo }) {
           <div className="space-y-4">
             <GamesCarousel />
             <div className="panel p-6 relative">
-              <DotMatrix text="HDMP GAMING BTC · " />
+              <DotMatrix text="DENLE AMOR ⚡️ HDMP · " />
               <div className="flex items-center justify-between mt-5">
                 <span className="chip text-arcade-purple pixel text-[9px]">BOSS LEVEL</span>
                 <div className="w-10 h-10 rounded-full grid place-items-center text-arcade-amber" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)' }}>⚡</div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { sfx } from '../lib/sound';
 
 // You (left, cyan) vs the machine (right, amber). 45s match. Score = your goals.
 // Each player plays their own match vs the AI; more goals wins the round.
@@ -27,6 +28,7 @@ export default function Pong({ onGameOver, onProgress, level = 1 }) {
     const s = st.current;
     const start = performance.now();
     let raf;
+    ctx.fillStyle = '#0a0e1a'; ctx.fillRect(0, 0, W, H); // opaque base for the trail effect
     const reset = (dir) => { s.bx = W / 2; s.by = H / 2; s.vx = ballSpeed * dir; s.vy = (Math.random() * 4 - 2); };
 
     const loop = (now) => {
@@ -44,18 +46,29 @@ export default function Pong({ onGameOver, onProgress, level = 1 }) {
       s.ry = Math.max(PADDLE_H / 2, Math.min(H - PADDLE_H / 2, s.ry));
 
       s.bx += s.vx; s.by += s.vy;
-      if (s.by < BALL || s.by > H - BALL) s.vy *= -1;
-      if (s.bx < PADDLE_W + BALL && Math.abs(s.by - s.ly) < PADDLE_H / 2 + BALL) { s.vx = Math.abs(s.vx) * 1.04; s.vy += (s.by - s.ly) * 0.05; }
-      if (s.bx > W - PADDLE_W - BALL && Math.abs(s.by - s.ry) < PADDLE_H / 2 + BALL) { s.vx = -Math.abs(s.vx) * 1.04; s.vy += (s.by - s.ry) * 0.05; }
-      if (s.bx < 0) { s.s[1]++; setScore([...s.s]); reset(1); }
-      if (s.bx > W) { s.s[0]++; setScore([...s.s]); reset(-1); }
+      if (s.by < BALL || s.by > H - BALL) { s.vy *= -1; sfx.blip(); }
+      if (s.bx < PADDLE_W + BALL && Math.abs(s.by - s.ly) < PADDLE_H / 2 + BALL) { s.vx = Math.abs(s.vx) * 1.04; s.vy += (s.by - s.ly) * 0.05; sfx.bounce(); }
+      if (s.bx > W - PADDLE_W - BALL && Math.abs(s.by - s.ry) < PADDLE_H / 2 + BALL) { s.vx = -Math.abs(s.vx) * 1.04; s.vy += (s.by - s.ry) * 0.05; sfx.bounce(); }
+      if (s.bx < 0) { s.s[1]++; setScore([...s.s]); sfx.bad(); reset(1); }
+      if (s.bx > W) { s.s[0]++; setScore([...s.s]); sfx.score(); reset(-1); }
 
-      ctx.fillStyle = '#0a0e1a'; ctx.fillRect(0, 0, W, H);
+      // Translucent clear leaves ghost trails behind the ball and paddles.
+      ctx.fillStyle = 'rgba(10,14,26,0.25)'; ctx.fillRect(0, 0, W, H);
+      // Subtle arcade grid, same motif as the landing background.
+      ctx.strokeStyle = 'rgba(34,211,238,0.03)'; ctx.beginPath();
+      for (let gx = 40; gx < W; gx += 40) { ctx.moveTo(gx, 0); ctx.lineTo(gx, H); }
+      for (let gy = 40; gy < H; gy += 40) { ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
+      ctx.stroke();
       ctx.strokeStyle = 'rgba(34,211,238,0.15)'; ctx.setLineDash([6, 10]);
       ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke(); ctx.setLineDash([]);
+      ctx.save();
+      ctx.shadowBlur = 16; ctx.shadowColor = '#22d3ee';
       ctx.fillStyle = '#22d3ee'; ctx.fillRect(0, s.ly - PADDLE_H / 2, PADDLE_W, PADDLE_H);
+      ctx.shadowColor = '#f59e0b';
       ctx.fillStyle = '#f59e0b'; ctx.fillRect(W - PADDLE_W, s.ry - PADDLE_H / 2, PADDLE_W, PADDLE_H);
+      ctx.shadowColor = '#fff';
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.bx, s.by, BALL, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
 
       if (onProgress && now - lastProg.current > 800) { lastProg.current = now; onProgress(s.s[0] * level); }
       if (left <= 0 && !endedRef.current) { endedRef.current = true; const won = s.s[0] >= s.s[1]; setTimeout(() => onGameOver && onGameOver(s.s[0] * level, won), 400); return; }

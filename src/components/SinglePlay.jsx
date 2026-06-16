@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GAMES } from '../lib/protocol';
 import GamePreview from './GamePreview';
+import GameStage from './GameStage';
 import Connect4 from '../games/Connect4';
 import TicTacToe from '../games/TicTacToe';
 import Pong from '../games/Pong';
@@ -72,7 +73,13 @@ export default function SinglePlay({ onExit }) {
         </div>
 
         <div className="glass-panel p-6 min-h-[440px] flex items-center justify-center arcade-grid">
-          {renderGame(sel, round, onGameOver, level)}
+          <GameStage
+            key={`${sel}-${round}`}
+            render={(handleOver) => renderGame(sel, round, handleOver, level)}
+            onGameOver={onGameOver}
+            onReplay={replay}
+            gameName={`${g.emoji} ${g.name}`}
+          />
         </div>
 
         {lastScore != null ? (

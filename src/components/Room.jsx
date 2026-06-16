@@ -129,7 +129,7 @@ export default function Room() {
                 )}
               </div>
               <LiveScores room={room} me={pubkey} />
-              <GameBoard key={room.round} room={room} />
+              <GameBoard room={room} />
             </div>
           ) : (
             <div className="text-center text-slate-500">

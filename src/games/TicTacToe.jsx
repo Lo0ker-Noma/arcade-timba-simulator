@@ -48,7 +48,7 @@ export default function TicTacToe({ onGameOver, level = 1 }) {
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="text-sm text-slate-300">{status}</div>
+      <div className="pixel text-[10px] text-slate-300">{status}</div>
       <div className="grid grid-cols-3 gap-2">
         {cells.map((c, i) => (
           <button key={i} onClick={() => play(i)} disabled={turn !== 'X' || !!c || endedRef.current}

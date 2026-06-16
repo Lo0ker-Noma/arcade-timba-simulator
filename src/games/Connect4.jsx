@@ -61,7 +61,7 @@ export default function Connect4({ onGameOver, level = 1 }) {
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="text-sm text-slate-300">{status}</div>
+      <div className="pixel text-[10px] text-slate-300">{status}</div>
       <div className="grid grid-cols-7 gap-1 p-2 rounded-xl" style={{ background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.3)' }}>
         {Array.from({ length: COLS }).map((_, c) => (
           <button key={c} onClick={() => play(c)} disabled={turn !== 1 || !!winner || dropRow(board, c) === -1} className="flex flex-col gap-1 px-1 disabled:cursor-not-allowed">
