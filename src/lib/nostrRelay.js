@@ -136,6 +136,60 @@ export function getRelay() {
   return _relay;
 }
 
+// Write-friendly relays for broadcasting public notes (kind:1). Several of them
+// because strict relays (e.g. damus) silently drop events from pubkeys without
+// web-of-trust or require NIP-42 AUTH; broadcasting to many guarantees the note
+// actually lands somewhere.
+const PUBLISH_RELAYS = [
+  DEFAULT_RELAY,
+  'wss://nos.lol',
+  'wss://relay.primal.net',
+  'wss://relay.nostr.band',
+  'wss://relay.damus.io',
+];
+
+// Broadcast an already-signed event to several relays and wait for their OK
+// responses. Resolves with { ok, total } where `ok` = how many relays accepted
+// it. Each relay gets its own short-lived socket so one slow/strict relay can't
+// block the rest.
+export function broadcastEvent(signed) {
+  return new Promise((resolve) => {
+    if (!hasValidShape(signed)) { resolve({ ok: 0, total: 0 }); return; }
+    const urls = [...new Set(PUBLISH_RELAYS)].filter(isSafeRelayUrl);
+    if (!urls.length) { resolve({ ok: 0, total: 0 }); return; }
+    let accepted = 0, settled = 0, done = false;
+    const sockets = [];
+    const finish = () => {
+      if (done) return;
+      done = true; clearTimeout(timer);
+      sockets.forEach((ws) => { try { ws.close(); } catch {} });
+      resolve({ ok: accepted, total: urls.length });
+    };
+    const bump = () => { settled += 1; if (settled >= urls.length) finish(); };
+    const timer = setTimeout(finish, 4500);
+    for (const url of urls) {
+      let counted = false;
+      const once = () => { if (!counted) { counted = true; bump(); } };
+      try {
+        const ws = new WebSocket(url);
+        sockets.push(ws);
+        ws.onopen = () => { try { ws.send(JSON.stringify(['EVENT', signed])); } catch { once(); } };
+        ws.onmessage = ({ data }) => {
+          if (typeof data !== 'string') return;
+          let m; try { m = JSON.parse(data); } catch { return; }
+          // ["OK", <event-id>, <accepted:boolean>, <message>]
+          if (Array.isArray(m) && m[0] === 'OK' && m[1] === signed.id) {
+            if (m[2] === true) accepted += 1;
+            else if (DEV) console.warn('[Nostr] relay rejected note', url, m[3]);
+            once();
+          }
+        };
+        ws.onerror = once;
+      } catch { once(); }
+    }
+  });
+}
+
 // Bech32-safe string sanitizer — remove control chars, cap length.
 function cleanStr(raw, maxLen) {
   if (typeof raw !== 'string') return null;

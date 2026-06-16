@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { sfx } from '../lib/sound';
-import { getRelay } from '../lib/nostrRelay';
+import { broadcastEvent } from '../lib/nostrRelay';
 
 const APP_URL = 'https://arcade-timba-simulator.vercel.app';
 
@@ -63,10 +63,11 @@ export default function GameStage({ render, onGameOver, onReplay, gameName,
         tags: [['t', 'arcadetimba'], ['t', 'hdmp'], ['r', APP_URL]],
         content,
       });
-      if (!signed) throw new Error('sign rejected');
-      getRelay().publish(signed);
-      setPub('ok');
-      sfx.coin();
+      if (!signed || !signed.id || !signed.sig) throw new Error('sign rejected');
+      // Broadcast to several relays and only celebrate if at least one accepts.
+      const { ok } = await broadcastEvent(signed);
+      if (ok > 0) { setPub('ok'); sfx.coin(); }
+      else { setPub('err'); }
     } catch {
       setPub('err');
     }
