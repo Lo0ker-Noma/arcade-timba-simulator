@@ -13,6 +13,9 @@ export default function App() {
   const soloMode = useGameStore((s) => s.soloMode);
   const enterSolo = useGameStore((s) => s.enterSolo);
   const exitSolo = useGameStore((s) => s.exitSolo);
+  const enterDemo = useAuthStore((s) => s.enterDemo);
+  const startDemoRoom = useGameStore((s) => s.startDemoRoom);
+  const startDemo = () => { enterDemo(); startDemoRoom(); };
 
   return (
     <div className="min-h-screen crt">
@@ -34,7 +37,7 @@ export default function App() {
 
       <main>
         {soloMode ? <SinglePlay onExit={exitSolo} />
-          : !isAuthenticated ? <Landing onSolo={enterSolo} />
+          : !isAuthenticated ? <Landing onSolo={enterSolo} onDemo={startDemo} />
           : room ? <Room /> : <Lobby />}
       </main>
 

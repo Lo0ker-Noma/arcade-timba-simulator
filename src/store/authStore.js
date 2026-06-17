@@ -96,6 +96,23 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Ephemeral DEMO identity — lets a judge try a full room (pot + rounds +
+  // payout) with zero setup: no NIP-07 extension, no sats, no second player.
+  // The pubkey is a throwaway random hex (never signs or publishes anything).
+  enterDemo: () => {
+    const a = new Uint8Array(32);
+    (globalThis.crypto || window.crypto).getRandomValues(a);
+    const pubkey = Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
+    set({
+      pubkey,
+      user: { name: 'Tú', picture: `https://api.dicebear.com/7.x/bottts/svg?seed=${pubkey}` },
+      isAuthenticated: true,
+      isReadOnly: true,
+      nostrWindow: null,
+    });
+    return pubkey;
+  },
+
   logout: () => {
     set({ isAuthenticated: false, user: null, pubkey: null, nostrWindow: null, isReadOnly: false });
   },

@@ -44,9 +44,10 @@ export default function Room() {
         <div>
           <div className="flex items-center gap-3">
             <button className="text-xs text-slate-500 hover:text-arcade-cyan" onClick={leaveRoom}>← Salir de la sala</button>
-            {isHost && room.status !== 'finished' && (
+            {isHost && !room.demo && room.status !== 'finished' && (
               <button className="text-xs text-red-400 hover:text-red-300" onClick={() => setShowClose(true)}>✕ Cerrar sala</button>
             )}
+            {room.demo && <span className="chip text-[9px] text-arcade-pink">🎬 DEMO</span>}
           </div>
           <h1 className="text-xl font-bold mt-1">{room.name}</h1>
           <div className="text-xs text-slate-500 font-mono">

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { getRelay } from '../lib/nostrRelay';
 import {
   ROOM_KIND, MSG_KIND, APP_TAG, GAMES, newRoomId,
-  buildRoomEvent, buildMsgEvent, parseContent,
+  buildRoomEvent, buildMsgEvent, parseContent, clampScore,
 } from '../lib/protocol';
 import { useAuthStore } from './authStore';
 import { startRealtime, stopRealtime, bindSession, onRealtime, sendRealtime } from '../lib/realtime';
@@ -18,6 +18,23 @@ export function onGameMessage(fn) {
 
 // Host-only, in-memory tally of per-round scores: { round: { pubkey: score } }.
 const roundScoreStore = {};
+
+// A plausible score for the demo bot per game/round, so the simulated rival is
+// beatable but real — sometimes you win the round, sometimes CryptoBot does.
+function demoBotScore(game, level) {
+  const lvl = Math.max(1, level || 1);
+  const rnd = (a, b) => Math.floor(a + Math.random() * (b - a));
+  switch (game) {
+    case 'kuka': return rnd(6, 16) * lvl;
+    case 'pong': return rnd(3, 9) * lvl;
+    case 'tron':
+    case 'snake': return rnd(1500, 5000) * lvl;
+    case 'connect4':
+    case 'tictactoe': return [100, 500, 800][rnd(0, 3)] * lvl;
+    case 'tetris': return rnd(800, 4000);
+    default: return rnd(200, 800) * lvl;
+  }
+}
 
 async function signAndPublish(unsigned) {
   const auth = useAuthStore.getState();
@@ -36,6 +53,7 @@ export const useGameStore = create((set, get) => ({
   room: null,           // current room doc
   roomUnsub: null,
   isHost: false,
+  demo: false,          // local single-device demo room (no Nostr, no Lightning)
   funding: { state: 'idle', invoice: null, error: null }, // idle|requesting|invoice|paid|error
 
   // Live in-progress scores broadcast during a round: { pubkey: score }.
@@ -115,11 +133,48 @@ export const useGameStore = create((set, get) => ({
     return id;
   },
 
-  // Host-only: publish updated room doc.
+  // ---- One-click DEMO room (no Nostr, no Lightning, no 2nd player) ----
+  // Drops the human straight into a "Rey de la pista" room vs a simulated bot,
+  // both already funded, so anyone can experience the full pot/round/payout
+  // loop in 5 seconds. All authority runs locally; nothing is signed/published.
+  startDemoRoom: () => {
+    const human = useAuthStore.getState().pubkey;
+    if (!human) return;
+    for (const k in roundScoreStore) delete roundScoreStore[k]; // clear stale tallies
+    const bot = 'bot-' + newRoomId();
+    const room = {
+      v: 1, type: 'room', id: 'demo-' + newRoomId(),
+      name: 'Sala Demo · 👑 Rey de la pista',
+      host: bot, hostLnAddress: '',
+      potMode: 'rey', potPerPlayer: 0, finalPot: 5000,
+      winTarget: 3,
+      status: 'playing', currentGame: 'kuka',
+      players: [
+        { pubkey: human, name: 'Tú', lnAddress: '', funded: true },
+        { pubkey: bot, name: '🤖 CryptoBot', lnAddress: '', funded: true },
+      ],
+      scores: { [human]: 0, [bot]: 0 },
+      points: { [human]: 0, [bot]: 0 },
+      round: 1,
+      activePair: [human, bot],
+      winner: null,
+      demo: true,
+      createdAt: Math.floor(Date.now() / 1000),
+    };
+    set({ room, isHost: true, demo: true });
+  },
+
+  // Host-only: publish updated room doc. In demo, mutate locally (no signing).
   publishRoom: async (mutator) => {
-    if (!get().isHost) return;
     const cur = get().room;
     if (!cur) return;
+    if (get().demo) {
+      const next = typeof mutator === 'function' ? mutator(structuredClone(cur)) : mutator;
+      delete next._ts;
+      set({ room: next });
+      return;
+    }
+    if (!get().isHost) return;
     const next = typeof mutator === 'function' ? mutator(structuredClone(cur)) : mutator;
     delete next._ts;
     const signed = await signAndPublish(buildRoomEvent(next));
@@ -174,7 +229,10 @@ export const useGameStore = create((set, get) => ({
   leaveRoom: () => {
     const u = get().roomUnsub;
     if (u) u();
-    set({ room: null, roomUnsub: null, isHost: false, funding: { state: 'idle', invoice: null, error: null } });
+    const wasDemo = get().demo;
+    set({ room: null, roomUnsub: null, isHost: false, demo: false, funding: { state: 'idle', invoice: null, error: null } });
+    // Leaving a demo drops the throwaway identity → back to the landing page.
+    if (wasDemo) useAuthStore.getState().logout();
   },
 
   // ---- Host closes/cancels a room ----
@@ -253,7 +311,8 @@ export const useGameStore = create((set, get) => ({
     if (!Number.isFinite(round) || round !== r.round) return;
     roundScoreStore[round] = roundScoreStore[round] || {};
     if (roundScoreStore[round][fromPubkey] == null) {
-      roundScoreStore[round][fromPubkey] = Number(msg.score) || 0;
+      // Anti-cheat: clamp the client-reported score to a plausible ceiling.
+      roundScoreStore[round][fromPubkey] = clampScore(r.currentGame, round, msg.score);
     }
     const participants = r.activePair;
     const got = roundScoreStore[round];
@@ -278,6 +337,18 @@ export const useGameStore = create((set, get) => ({
   submitScore: async (score) => {
     const r = get().room;
     if (!r) return;
+    // Demo: record our score locally and have the bot answer with a plausible
+    // one, so the round resolves on a single device with no relay.
+    if (get().demo) {
+      const human = useAuthStore.getState().pubkey;
+      get()._recordScore({ round: r.round, score }, human);
+      const bot = r.players.find((p) => p.pubkey !== human)?.pubkey;
+      const r2 = get().room;
+      if (bot && r2 && r2.status === 'playing') {
+        get()._recordScore({ round: r.round, score: demoBotScore(r2.currentGame, r2.round) }, bot);
+      }
+      return;
+    }
     const auth = useAuthStore.getState();
     const payload = { v: 1, type: 'score', round: r.round, score: Math.round(Number(score) || 0) };
     // Host records its own score locally too (idempotent), in case the relay
@@ -342,6 +413,7 @@ export const useGameStore = create((set, get) => ({
 
   // ---- Realtime (ephemeral session-key) channel for live in-progress scores ----
   beginRealtime: async () => {
+    if (get().demo) return; // demo has no relay / live channel
     const r = get().room;
     if (!r) return;
     await startRealtime(r.id, async (m) => {

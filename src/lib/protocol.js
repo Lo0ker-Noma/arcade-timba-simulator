@@ -49,6 +49,30 @@ export function totalPot(room) {
   return Math.max(0, Math.floor(room.potPerPlayer || 0)) * funded;
 }
 
+// Anti-cheat: scores are computed client-side (each player vs the machine), so
+// a tampered client could submit an absurd number when real sats are on the
+// line. The HOST clamps every incoming score to a plausible ceiling per game
+// and level before counting it. Ceilings are deliberately generous — they only
+// cut off the physically impossible (e.g. 999999), never a great honest run.
+const SCORE_CEILINGS = {
+  connect4: (lvl) => 1200 * lvl,   // base ≤1000 × level
+  tictactoe: (lvl) => 1200 * lvl,
+  pong: (lvl) => 60 * lvl,         // goals scored × level
+  tron: (lvl) => 14000 * lvl,      // survival secs ×100 (+3000 win) × level
+  snake: (lvl) => 14000 * lvl,
+  tetris: () => 80000,             // raw Tetris score (not level-scaled)
+  kuka: (lvl) => 250 * lvl,        // kills × level over 60s
+};
+
+export function clampScore(game, level, score) {
+  const n = Number(score);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  const lvl = Math.max(1, Math.floor(Number(level) || 1));
+  const ceil = SCORE_CEILINGS[game];
+  const max = ceil ? ceil(lvl) : 100000;
+  return Math.min(Math.floor(n), Math.floor(max));
+}
+
 export function newRoomId() {
   const a = new Uint8Array(8);
   (globalThis.crypto || window.crypto).getRandomValues(a);

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { requestInvoice, hasWebLN, payWithWebLN, pollPaid } from '../lib/lightning';
 import { totalPot as computePot } from '../lib/protocol';
+import { useGameStore } from '../store/gameStore';
 
 // Shown when a room finishes. The escrow holder (host) pays the full pot to the
 // winner's Lightning Address — AUTOMATICALLY (WebLN, or QR + verify polling).
@@ -13,11 +14,13 @@ export default function PayoutPanel({ room, isHost }) {
   const [invoice, setInvoice] = useState('');
   const [error, setError] = useState('');
   const cancelled = useRef(false);
+  const startDemoRoom = useGameStore((s) => s.startDemoRoom);
+  const leaveRoom = useGameStore((s) => s.leaveRoom);
 
   const winnerAddr = winner?.lnAddress;
 
   useEffect(() => {
-    if (!isHost || isFree) return;
+    if (!isHost || isFree || room.demo) return;
     cancelled.current = false;
     (async () => {
       if (!winnerAddr) { setError('El ganador no configuró Lightning Address'); setState('error'); return; }
@@ -45,6 +48,29 @@ export default function PayoutPanel({ room, isHost }) {
     return () => { cancelled.current = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Demo: celebrate the result without touching real Lightning.
+  if (room.demo) {
+    const youWon = room.winner && !room.winner.startsWith('bot-');
+    return (
+      <div className="panel p-6 text-center max-w-md mx-auto">
+        <div className="text-5xl mb-2 animate-flicker">{youWon ? '🏆' : '🤖'}</div>
+        <h2 className="text-2xl font-bold text-arcade-amber neon-text mb-1">
+          {youWon ? '¡Ganaste la demo!' : 'CryptoBot gana esta ronda'}
+        </h2>
+        <p className="text-slate-400 mb-1">{room.scores[room.winner]} victorias · primero a {room.winTarget}</p>
+        <div className="text-3xl font-bold text-arcade-green my-3">⚡ {room.finalPot.toLocaleString()} sats</div>
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          🎬 Esto es una <b>demo</b>. En una sala real, el bote se envía solo al ganador por
+          <b className="text-arcade-cyan"> Lightning</b> — sin custodia y sin backend.
+        </p>
+        <div className="flex gap-2 mt-4">
+          <button className="btn-neon flex-1" onClick={() => startDemoRoom()}>↻ Jugar otra</button>
+          <button className="btn-ghost flex-1" onClick={() => leaveRoom()}>Salir</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="panel p-6 text-center max-w-md mx-auto">
